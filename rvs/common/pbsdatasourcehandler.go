@@ -113,8 +113,8 @@ func downloadFileFromPBSServer(sFilePath string, sJobId string, bIsJobRunning bo
 	var startTime = time.Now()
 	log.Println("Search existing object used for downloading from download concurrent request manager")
 	log.Println("This helps in performance in case more than one user has asked for same file from same job")
-	var downloadedPbsObject DownloadedPBSDSObject
-	downloadedPbsObject = GetDownloadedPASFileObject(sFilePath, sJobId)
+
+	var downloadedPbsObject = GetDownloadedPASFileObject(sFilePath, sJobId)
 	//downloadedFileObject.Lock()
 	var fileDownloaded string
 
@@ -343,7 +343,7 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 			log.Fatal(e)
 		}
 	}
-	log.Println("File Service Download Time ", time.Now().Sub(wirteTime))
+	log.Println("File Service Download Time ", time.Since(wirteTime))
 	// Get last modification time
 	log.Println("Getting last modification time of datasource")
 	var JobState = ""

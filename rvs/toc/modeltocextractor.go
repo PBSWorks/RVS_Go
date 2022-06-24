@@ -2,6 +2,7 @@ package toc
 
 import (
 	"altair/rvs/common"
+	"altair/rvs/datamodel"
 	"bufio"
 	"fmt"
 	"io/ioutil"
@@ -12,8 +13,23 @@ import (
 
 const MODEL_COMP_CFG_PATH = "/resources/scripts/GetModelComps.cfg"
 
-func GetModelToc(sModelFilePath string, username string, password string) string {
+func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server string, pasURL string, token string,
+	username string, password string) (string, error) {
 	fmt.Println("Hello Model!")
+	var resulrdatasourceerr error
+	var datasource = buildModelDataSource(sModelFilePath, sJobId, sJobState, server, pasURL, token)
+
+	if sJobId == "" && sJobState == "" {
+		sModelFilePath, resulrdatasourceerr = common.ResolveFilePortDataSource(datasource, username, password)
+		if resulrdatasourceerr != nil {
+			return "", resulrdatasourceerr
+		}
+	} else {
+		sModelFilePath, resulrdatasourceerr = common.ResolvePBSPortDataSource(datasource, username, password)
+		if resulrdatasourceerr != nil {
+			return "", resulrdatasourceerr
+		}
+	}
 
 	sModelFilePath = strings.Replace(sModelFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
 
@@ -37,8 +53,28 @@ func GetModelToc(sModelFilePath string, username string, password string) string
 		log.Fatal(err)
 	}
 
-	return res
+	return res, nil
 
+}
+
+func buildModelDataSource(sModelFilePath string, sJobId string, sJobState string, sServerName string,
+	pasURL string, token string) datamodel.ResourceDataSource {
+
+	var pasServerJobModel datamodel.PASServerJobModel
+	pasServerJobModel.JobId = sJobId
+	pasServerJobModel.JobState = sJobState
+	pasServerJobModel.ServerName = sServerName
+	pasServerJobModel.PasURL = pasURL
+
+	return buildModelFileDataSource(token, sModelFilePath, sServerName, pasServerJobModel)
+
+}
+
+func buildModelFileDataSource(sToken string, sModelFilePath string, servername string,
+	pasServerJobModel datamodel.PASServerJobModel) datamodel.ResourceDataSource {
+
+	return common.BuildResultDataSource(sToken, "ds1", sModelFilePath, false, servername,
+		pasServerJobModel)
 }
 
 func extractModelTOC(sOutputFile string, sModelFilePath string, username string, password string) {

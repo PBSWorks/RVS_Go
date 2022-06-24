@@ -913,7 +913,8 @@ func buildResultFileDataSource(cmPlotRequestResponseModel PlotRequestResModel, s
 	pasServerJobModel.ServerName = cmPlotRequestResponseModel.ResultFileInformationModel.ServerName
 	pasServerJobModel.PasURL = cmPlotRequestResponseModel.ResultFileInformationModel.PasUrl
 
-	var ResultDataSource = common.BuildResultDataSource(sToken, indexValue, filepath, isSeriesFile, servername, pasServerJobModel)
+	var id = "res" + strconv.FormatInt(indexValue, 10)
+	var ResultDataSource = common.BuildResultDataSource(sToken, id, filepath, isSeriesFile, servername, pasServerJobModel)
 
 	return ResultDataSource
 

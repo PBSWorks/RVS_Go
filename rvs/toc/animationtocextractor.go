@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,23 @@ func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile s
 	fmt.Println("Hello ANIMATION!")
 	var username string
 	var password string
+	var resulrdatasourceerr error
+
+	var datasource = buildAnimTOCRequestForResult(sServerName, sResultFilePath,
+		sIsSeriesFile, sJobId, sJobState, token, pasURL)
+
+	if sJobId == "" && sJobState == "" {
+		sResultFilePath, resulrdatasourceerr = common.ResolveFilePortDataSource(datasource, username, password)
+		if resulrdatasourceerr != nil {
+			return "", resulrdatasourceerr
+		}
+	} else {
+		sResultFilePath, resulrdatasourceerr = common.ResolvePBSPortDataSource(datasource, username, password)
+		if resulrdatasourceerr != nil {
+			return "", resulrdatasourceerr
+		}
+	}
+
 	sResultFilePath = strings.Replace(sResultFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
 
 	fileAnimFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "ANIM")
@@ -55,6 +73,27 @@ func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile s
 	}
 	return res, nil
 
+}
+
+func buildAnimTOCRequestForResult(sServerName string, sResultFilePath string, sIsSeriesFile string,
+	sJobId string, sJobState string, token string, pasURL string) datamodel.ResourceDataSource {
+
+	var pasServerJobModel datamodel.PASServerJobModel
+	pasServerJobModel.JobId = sJobId
+	pasServerJobModel.JobState = sJobState
+	pasServerJobModel.ServerName = sServerName
+	pasServerJobModel.PasURL = pasURL
+
+	var index = common.GetUniqueRandomIntValue()
+	var isSeriesFile, _ = strconv.ParseBool(sIsSeriesFile)
+	return buildAnimResultFileDataSource(token, index, sResultFilePath, isSeriesFile, sServerName, pasServerJobModel)
+
+}
+
+func buildAnimResultFileDataSource(sToken string, index int64, filepath string, isSeriesFile bool, servername string,
+	pasServerJobModel datamodel.PASServerJobModel) datamodel.ResourceDataSource {
+	var id = "res" + strconv.FormatInt(index, 10)
+	return common.BuildResultDataSource(sToken, id, filepath, isSeriesFile, servername, pasServerJobModel)
 }
 
 func extractAnimTOC(sOutputFile string, sResultFilePath string, fileModelComponents string, username string, password string) {

@@ -21,6 +21,8 @@ var tocRequest datamodel.TOCRequest
 
 var plotRequestResModel graph.PlotRequestResModel
 
+var fileInformationModel datamodel.FileInformationModel
+
 func getToc(sServerName string, resultfilepath string, sIsSeriesFile string,
 	sJobId string, sJobState string, token string, pasURL string) (string, error) {
 
@@ -43,9 +45,15 @@ func getFilterToc(sServerName string, resultfilepath string, sIsSeriesFile strin
 		tocRequest, sJobId, sJobState, token, pasURL, tocRequest.PlotFilter.Subcase.Name, tocRequest.PlotFilter.Type.Name)
 }
 
-func getModelToc(resultFilepath string, username string, password string, tocRequest datamodel.TOCRequest) string {
+func getModelToc(resultFilepath string, jobid string, jobstate string, server string, pasURL string,
+	token string, username string, password string) (string, error) {
 
-	return toc.GetModelToc(resultFilepath, username, password)
+	return toc.GetModelToc(resultFilepath, jobid, jobstate, server, pasURL, token, username, password)
+}
+
+func getRVPToc(fileInformationModel datamodel.FileInformationModel, sToken string, username string, password string) (string, error) {
+
+	return toc.GetRVPToc(fileInformationModel, sToken, username, password)
 }
 
 func getPlotGraph(plotRequestCaller string, username string, password string, token string) string {
@@ -93,9 +101,6 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 	sIsSeriesFile := query.Get("seriesfile")
 	pasURL := query.Get("pasURL")
 	token := r.Header.Get("Authorization")
-
-	fmt.Println("token:", token)
-	fmt.Println(tocRequest.PostProcessingType)
 	var output, err = getToc(sServerName, resultfilepath, sIsSeriesFile,
 		sJobId, sJobState, strings.TrimSpace(token), pasURL)
 
@@ -165,15 +170,54 @@ func getModelTOCData(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(tocRequest)
 
 	query := r.URL.Query()
-	//jobid := query.Get("jobid")
-	//jobstate := query.Get("jobstate")
-	//server := query.Get("server")
+	jobid := query.Get("jobid")
+	jobstate := query.Get("jobstate")
+	server := query.Get("server")
 	modelfilepath := query.Get("modelfilepath")
-	//seriesfile := query.Get("seriesfile")
-	//pasURL := query.Get("pasURL")
-	fmt.Println("modelfilepath: ", modelfilepath)
-	fmt.Println(tocRequest.PostProcessingType)
-	var output = getModelToc(modelfilepath, tocRequest.User, tocRequest.Pwd, tocRequest)
+	pasURL := query.Get("pasURL")
+	token := r.Header.Get("Authorization")
+	var output, err = getModelToc(modelfilepath, jobid, jobstate, server, pasURL, strings.TrimSpace(token), tocRequest.User, tocRequest.Pwd)
+
+	if err != nil {
+		var tocErr *exception.RVSError
+		switch {
+		case errors.As(err, &tocErr):
+			w.Header().Set("error-code", tocErr.Errorcode)
+			w.Header().Set("error-type", tocErr.Errortype)
+			w.Header().Set("error-details", tocErr.Errordetails)
+		default:
+			fmt.Printf("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(output))
+
+}
+
+func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
+	// get the body of our POST request
+	// unmarshal this into a new Article struct
+	// append this to our Articles array.
+	fmt.Println("inside get toc call")
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	json.Unmarshal(reqBody, &fileInformationModel)
+	token := r.Header.Get("Authorization")
+	var output, err = getRVPToc(fileInformationModel, strings.TrimSpace(token), "pbsworks", "admin@123")
+
+	if err != nil {
+		var tocErr *exception.RVSError
+		switch {
+		case errors.As(err, &tocErr):
+			w.Header().Set("error-code", tocErr.Errorcode)
+			w.Header().Set("error-type", tocErr.Errortype)
+			w.Header().Set("error-details", tocErr.Errordetails)
+		default:
+			fmt.Printf("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(output))
@@ -312,6 +356,7 @@ func main() {
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/toc/result", getTOCData).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/toc/result/filter", getTOCFilterData).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/toc/model", getModelTOCData).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/rvp/toc", getRVPTOCData).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/plot/data", getPlotGraphData).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/allServersFilePatternsNew", getSupportedFilePatternsForAllServersNew).Methods("GET")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/getHWConfigDetails", isHyperWorksComposeConfigured).Methods("GET")

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"altair/rvs/datamodel"
 	"bytes"
 	"encoding/json"
 	"math/rand"
@@ -29,6 +30,8 @@ const COMPOSE_UNIX_EXEC = "/scripts/Compose_Batch"
 const PLOT_OML_PATH = "/resources/scripts"
 const TEMP_OML_FILE_NAME = "temp.oml"
 const GET_PLOT_TOC_OML_FILE_NAME = "GetPlotTOC.oml"
+const RVP_TOC_OUTPUT_FILE_NAME_PART = "RVPPlotTOC.xml"
+const RVP_TOC_SERIALIZED_FILE = "RVPTOCSerialized.ser"
 const ROOT_ASSEMBLY = "ROOT"
 const MODEL_COMPONENTS_FILE_NAME = "ModelComponents.json"
 const MODEL_COMP_SOURCE_PATH = "/resources/scripts/ModelComponents.cfg"
@@ -37,6 +40,14 @@ const Graph_MASTER_OML_FILE_NAME = "/rvs_lib/plugins/raw_plot_data_provider/reso
 const Graph_MASTER_COMPONENT_FILE_PATH = "/rvs_lib/plugins/raw_plot_data_provider/resources/"
 const PLOT_GRAPH_OML_FILE_NAME = "GetPlotData.oml"
 const COMP_LIST_FILE_PATH = "components.txt"
+const RVP_FILE_EXTENSION = ".rvp"
+const UNTITLED_PLOT_NAME = "UNTITLED_PLOT"
+const RVP_VERSION_SYMBOL = "VERSION"
+const COMMENT_STARTER = "##"
+const BEGIN_PLOT = "BEGIN_PLOT"
+const END_PLOT = "END_PLOT"
+const ENGLISH_CSV_FILE_DELIMITER = ","
+const GERMAN_CSV_FILE_DELIMITER = ";"
 
 const STATISTICS_TAG = "Statistics"
 const STATISTIC_TAG = "Statistic"
@@ -67,6 +78,7 @@ var (
 	WlmdetailsMap         = make(map[string]WLMDetail)
 	SeriesVsBaseRegEx     = make(map[string]string)
 	SeriesRegexVsWildcard = make(map[string]string)
+	RvpFilesModel         datamodel.SupportedRVPFilesModel
 )
 
 func randomInt(min, max int) int {
@@ -151,4 +163,16 @@ func GetFileName(Filepath string) string {
 func GetDirPath(Filepath string) string {
 	dir, _ := filepath.Split(Filepath)
 	return dir
+}
+
+/**
+ * Breaks a give string based on the delimiter passed and returns
+ * array of string containing the broken strings.
+ * @param line
+ * @param delimiter
+ * @return
+ */
+func BreakStringWithDelimiter(line string, delimiter string) []string {
+	var arrStringTokens = strings.Split(line, delimiter)
+	return arrStringTokens
 }

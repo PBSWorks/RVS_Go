@@ -64,6 +64,7 @@ type Comments struct {
 
 type Translator struct {
 	XMLName                          xml.Name         `xml:"Translator"`
+	ScriptAbsolutePath               string           `xml:"ScriptAbsolutePath"`
 	TemporaryOutputFileExtension     string           `xml:"TemporaryOutputFileExtension"`
 	ResultFileAbsolutePathArgName    string           `xml:"ResultFileAbsolutePathArgName"`
 	TemporaryFileAbsolutePathArgName string           `xml:"TemporaryFileAbsolutePathArgName"`

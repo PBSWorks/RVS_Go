@@ -63,7 +63,7 @@ func AllocateFileWithGlobalPermission(sFileName string, sParentDirAbsPath string
 		log.Fatal(e)
 	}
 	log.Println(myfile)
-	myfile.Chmod(777)
+	myfile.Chmod(0777)
 	myfile.Close()
 	log.Println("Created file " + sParentDirAbsPath + "/" + sFileName + " with global permission for every one")
 	return sParentDirAbsPath + "/" + sFileName

@@ -24,10 +24,9 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 	var username string
 	var password string
 	var resulrdatasourceerr error
-	fmt.Println("pasURL", pasURL)
+
 	var datasource = buildTOCRequestForResult(sServerName, sResultFilePath,
-		sIsSeriesFile, sTOCRequest, sJobId, sJobState, token, pasURL)
-	fmt.Println("datasource pasURL", datasource.FilePortServer.PasUrl)
+		sIsSeriesFile, sJobId, sJobState, token, pasURL)
 
 	outputFileFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "PLOT")
 	sTOCOutputFile := common.AllocateFile(PLOT_TOC_OUTPUT_FILE_NAME_PART, outputFileFolder, username, password)
@@ -76,7 +75,7 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 }
 
 func buildTOCRequestForResult(sServerName string, sResultFilePath string, sIsSeriesFile string,
-	sTOCRequest datamodel.TOCRequest, sJobId string, sJobState string, token string, pasURL string) datamodel.ResourceDataSource {
+	sJobId string, sJobState string, token string, pasURL string) datamodel.ResourceDataSource {
 
 	var pasServerJobModel datamodel.PASServerJobModel
 	pasServerJobModel.JobId = sJobId
@@ -92,8 +91,8 @@ func buildTOCRequestForResult(sServerName string, sResultFilePath string, sIsSer
 
 func buildResultFileDataSource(sToken string, index int64, filepath string, isSeriesFile bool, servername string,
 	pasServerJobModel datamodel.PASServerJobModel) datamodel.ResourceDataSource {
-
-	return common.BuildResultDataSource(sToken, index, filepath, isSeriesFile, servername, pasServerJobModel)
+	var id = "res" + strconv.FormatInt(index, 10)
+	return common.BuildResultDataSource(sToken, id, filepath, isSeriesFile, servername, pasServerJobModel)
 }
 
 func writeIntoOmlFile(tempOmlFile string, sResultFilePath string,

@@ -1,15 +1,15 @@
 package datamodel
 
 type TOCRequest struct {
-	User               string           `json:"user"`
-	Pwd                string           `json:"pwd"`
-	PostProcessingType string           `json:"postProcessingType"`
-	ResultDataSource   resultDataSource `json:"resultDataSource"`
-	ModelDataSource    string           `json:"modelDataSource"`
-	Custom             string           `json:"custom"`
-	IsCachingRequired  string           `json:"isCachingRequired"`
-	SchemaVersion      string           `json:"schemaVersion"`
-	PlotFilter         plotFilter       `json:"plotFilter"`
+	User               string             `json:"user"`
+	Pwd                string             `json:"pwd"`
+	PostProcessingType string             `json:"postProcessingType"`
+	ResultDataSource   ResourceDataSource `json:"resultDataSource"`
+	ModelDataSource    string             `json:"modelDataSource"`
+	Custom             string             `json:"custom"`
+	IsCachingRequired  string             `json:"isCachingRequired"`
+	SchemaVersion      string             `json:"schemaVersion"`
+	PlotFilter         plotFilter         `json:"plotFilter"`
 }
 
 type plotFilter struct {
@@ -34,25 +34,4 @@ type filter struct {
 	GetNext bool   `json:"getNext"`
 	Start   string `json:"start"`
 	Count   int    `json:"count"`
-}
-
-type resultDataSource struct {
-	FilePath             string
-	FilePortServerCType  FilePortServerCType `json:"FilePortServerCType"`
-	Custom               string              `json:"custom"`
-	Id                   string              `json:"id"`
-	Label                string              `json:"label"`
-	IsForceRefresh       string              `json:"isForceRefresh"`
-	LastModificationTime string              `json:"lastModificationTime"`
-	SeriesFile           string              `json:"seriesFile"`
-}
-
-type FilePortServerCType struct {
-	Name               string
-	UserName           string
-	UserPassword       string
-	IsSecure           string
-	Port               string
-	AuthorizationToken string
-	PasUrl             string
 }

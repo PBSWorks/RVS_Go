@@ -2,16 +2,15 @@ package common
 
 import (
 	"altair/rvs/datamodel"
-	"strconv"
 	"strings"
 )
 
-func BuildResultDataSourceBuilder(sToken string, index int64, filepath string, isSeriesFile bool, servername string,
+func BuildResultDataSourceBuilder(sToken string, id string, filepath string, isSeriesFile bool, servername string,
 	pasServerJobModel datamodel.PASServerJobModel) datamodel.ResourceDataSource {
 
 	var resultdatasource datamodel.ResourceDataSource
 
-	resultdatasource.Id = "res" + strconv.FormatInt(index, 10)
+	resultdatasource.Id = id
 	resultdatasource.FilePath = filepath
 	resultdatasource.FileIdentifier = filepath
 	resultdatasource.SeriesFile = isSeriesFile

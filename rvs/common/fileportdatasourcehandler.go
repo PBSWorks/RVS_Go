@@ -122,8 +122,8 @@ func downloadFileFromFilePortServer(sFilePath string,
 	dataSource datamodel.ResourceDataSource, userAuthToken string, sPasURL string) string {
 	log.Println("Entering method downloadFileFromFilePortServer")
 	log.Println("Search for any same parallel request made using fileDownloadConcurrentRequestManager")
-	var downloadedFileObject DownloadedFilePortDSObject
-	downloadedFileObject = GetDownloadedFileObject(sFilePath, sFilePortServerName)
+
+	var downloadedFileObject = GetDownloadedFileObject(sFilePath, sFilePortServerName)
 
 	//downloadedFileObject.Lock()
 	var fileDownloaded string
@@ -283,7 +283,6 @@ func getAllFilesList(mapCurrentFileVsModTime map[string]int64) []string {
 			lstChangedFiles = append(lstChangedFiles, sFileName)
 		}
 	}
-
 	return lstChangedFiles
 }
 
@@ -317,7 +316,7 @@ func readSeriesFileFromPBSServerUserToken(sFilePath string, sFilePortServerName 
 			log.Fatal(e)
 		}
 	}
-	log.Println("File Service Download Time ", time.Now().Sub(wirteTime))
+	log.Println("File Service Download Time ", time.Since(wirteTime))
 	// Get last modification time
 	log.Println("Getting last modification time of datasource")
 	var lastModTime = GetLastModificationTime("", "", dataSource.FilePortServer.PasUrl,
@@ -359,7 +358,9 @@ func buildURLParametres(lstFilePath []string, sFilePath string) string {
 			urlParameters = urlParameters + "&paths=" + path + lstFilePath[i]
 		}
 	}
+
 	return urlParameters
+
 }
 
 func Unzip(src string, dest string) ([]string, error) {
