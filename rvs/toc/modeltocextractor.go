@@ -15,7 +15,6 @@ const MODEL_COMP_CFG_PATH = "/resources/scripts/GetModelComps.cfg"
 
 func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server string, pasURL string, token string,
 	username string, password string) (string, error) {
-	fmt.Println("Hello Model!")
 	var resulrdatasourceerr error
 	var datasource = buildModelDataSource(sModelFilePath, sJobId, sJobState, server, pasURL, token)
 
@@ -40,7 +39,7 @@ func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server 
 
 	b, err := ioutil.ReadFile(fileModelComponents) // just pass the file name
 	if err != nil {
-		fmt.Print(err)
+		log.Print(err)
 	}
 	output := string(b)
 

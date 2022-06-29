@@ -416,5 +416,5 @@ func doesXCurveContainsNegativeValues() bool {
 	return m_bIsXNegative
 }
 func doesYCurveContainsNegativeValues() bool {
-	return m_bIsXNegative
+	return m_bIsYNegative
 }

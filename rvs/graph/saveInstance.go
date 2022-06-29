@@ -4,8 +4,8 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/exception"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -34,7 +34,7 @@ func SaveInstance(sRequestData []byte, pasURL string, sToken string) (string, er
 	jsonFile, err := os.Open(instanceSaveModel.PlotSaveModelList[0].PlotResponseModel.TemporaryPltFilePath)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	defer jsonFile.Close()

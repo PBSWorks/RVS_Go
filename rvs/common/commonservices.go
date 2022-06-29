@@ -81,7 +81,7 @@ type files struct {
 
 func GetWLMDetails(cookies string, wlmName string, pasUrl string) {
 	if !IsValidString(wlmName) {
-		fmt.Println("WLM Name is empty wlmName=" + wlmName)
+		log.Println("WLM Name is empty wlmName=" + wlmName)
 	}
 	wlmName = strings.TrimSpace(wlmName)
 	fecthAllWLM(cookies, wlmName, pasUrl)
@@ -327,7 +327,7 @@ func UploadFileWLM(filename string, sToken string, filepath string, pasUrl strin
 	// this step is very important
 	fileWriter, err := bodyWriter.CreateFormFile("attfile", filepath)
 	if err != nil {
-		fmt.Println("error writing to buffer")
+		log.Println("error writing to buffer")
 		return err
 	}
 
@@ -336,7 +336,7 @@ func UploadFileWLM(filename string, sToken string, filepath string, pasUrl strin
 	// open file handle
 	fh, err := os.Open(filename)
 	if err != nil {
-		fmt.Println("error opening file")
+		log.Println("error opening file")
 		return err
 	}
 	defer fh.Close()
@@ -517,7 +517,7 @@ func getPlotSupportedFiles() map[string]bool {
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -545,7 +545,7 @@ func getAnimationSupportedFiles() map[string]bool {
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -574,7 +574,7 @@ func getRVPSupportedFiles() map[string]bool {
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -692,19 +692,6 @@ func parseDataPoints(dataPoints datamodel.DataPoints) datamodel.DataPointsParser
 
 }
 
-func parseLocale(localeElement datamodel.NumberLocale) {
-
-	if localeElement.Language != "" {
-		var language = localeElement.Language
-		var country = localeElement.Country
-		if IsValidString(language) && IsValidString(country) {
-			//	loca
-		}
-	}
-
-	//return locale
-}
-
 func parseComments(comments datamodel.Comments) datamodel.CommentsParserModel {
 	var commentsParserModel datamodel.CommentsParserModel
 	commentsParserModel.Prefix = comments.Prefix
@@ -718,7 +705,7 @@ func getRVPDataSupportedFiles() map[string]bool {
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -738,7 +725,7 @@ func getRVPDataSupportedFiles() map[string]bool {
 			rvpdataMap[RVPDataplugin.DataProvider.SupportedFiles.File[i].Pattern] = RVPDataplugin.DataProvider.SupportedFiles.File[i].SupportsDirectPlotOperation
 		}
 	}
-	fmt.Println("rvpdataMap", rvpdataMap)
+
 	return rvpdataMap
 
 }
@@ -816,9 +803,8 @@ func GetSupportedSeriesFilePatterns(sToken string) string {
 		SeriesRegexVsWildcard[SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern] =
 			SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesWildcardPattern
 	}
-	fmt.Println(" GetSupportedSeriesFilePatterns SeriesRegexVsWildcard ", SeriesRegexVsWildcard)
+
 	if seriesFilepattern, err := json.MarshalIndent(seriespatternFile, "", "    "); err == nil {
-		//	fmt.Println(string(seriesFilepattern))
 		return string(seriesFilepattern)
 	}
 

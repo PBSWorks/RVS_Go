@@ -4,7 +4,6 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
 	"bufio"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -25,7 +24,6 @@ func RVPFileTOCExtractor(sRVPFilePath string) datamodel.RVPPlotCType {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
 		var line = strings.TrimSpace(scanner.Text())
 		//Logging RVP Version
 		if strings.HasPrefix(line, common.RVP_VERSION_SYMBOL) {
@@ -72,7 +70,7 @@ func RVPFileTOCExtractor(sRVPFilePath string) datamodel.RVPPlotCType {
 			case 3:
 				simulationCount++
 				beginPlotCount++
-				var delimiter = FindDelimiterByParsingPlotColumnPointsLine(line)
+				var delimiter = common.FindDelimiterByParsingPlotColumnPointsLine(line)
 				var arrCurveNames = common.BreakStringWithDelimiter(arrCurveNamesLine, delimiter)
 				for i := 0; i < len(arrCurveNames); i++ {
 					rvpPlot.RvpPlotColumnInfo.ColumnNames = append(rvpPlot.RvpPlotColumnInfo.ColumnNames, strings.TrimSpace(arrCurveNames[i]))
@@ -84,21 +82,4 @@ func RVPFileTOCExtractor(sRVPFilePath string) datamodel.RVPPlotCType {
 	}
 
 	return rvpPlot
-}
-
-func FindDelimiterByParsingPlotColumnPointsLine(line string) string {
-	/*
-	 * Right now, we are supporting two type of file contents
-	 * One contains decimal numbers with . as decimal seperator and
-	 * , as delimiter. Another contains , as decimal seperator and
-	 * ; as delimiter
-	 * So if the line contains ; its german csv file, else we will
-	 * consider as english csv file
-	 */
-
-	if strings.Contains(line, common.GERMAN_CSV_FILE_DELIMITER) {
-		return common.GERMAN_CSV_FILE_DELIMITER
-	} else {
-		return common.ENGLISH_CSV_FILE_DELIMITER
-	}
 }

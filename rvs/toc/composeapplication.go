@@ -2,7 +2,7 @@ package toc
 
 import (
 	"altair/rvs/common"
-	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -15,7 +15,7 @@ func ExecuteComposeApplicatopn(plottocomlfile string, username string, password 
 	common.RunCommand(buildCommandArrayForOperatingSystem(), username, password)
 	dt1 := time.Now()
 	diff := dt1.Sub(dt)
-	fmt.Println("Compose Execution Time: ", diff)
+	log.Println("Compose Execution Time: ", diff)
 }
 
 func buildCommandArrayForOperatingSystem() []string {
@@ -31,9 +31,9 @@ func buildCommandArrayForOperatingSystem() []string {
 	}
 	info, err := os.Stat(sExec)
 	if os.IsNotExist(err) {
-		fmt.Println(info)
-		fmt.Println("sExec: ", sExec)
-		fmt.Println("Compose Execution file does not exists.")
+		log.Println(info)
+		log.Println("sExec: ", sExec)
+		log.Println("Compose Execution file does not exists.")
 	}
 	lstOfCmdItems = append(lstOfCmdItems, "-f")
 	lstOfCmdItems = append(lstOfCmdItems, m_ScriptPath)

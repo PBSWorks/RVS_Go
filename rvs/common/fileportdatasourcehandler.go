@@ -68,7 +68,7 @@ func ResolveFilePortDataSource(datasource datamodel.ResourceDataSource, username
 	var sPasURL = datasource.FilePortServer.PasUrl
 
 	if IsWindows() {
-		fmt.Println("Windows Server")
+		log.Println("Windows Server")
 	} else {
 		log.Println("Checking if user " + username + " has read permission on file ")
 		var arrCmd []string
@@ -162,7 +162,6 @@ func downloadSeriesFileOnLinux(sFilePath string, sFilePortServerName string,
 	lstChangedFiles = getAllFilesList(mapCurrentFileVsModTime)
 	var fileDownloaded = readSeriesFileFromPBSServerUserToken(sFilePath, sFilePortServerName,
 		username, password, dataSource, userAuthToken, lstChangedFiles, "", sPasURL)
-	fmt.Println(fileDownloaded)
 	return fileDownloaded
 
 }
@@ -217,7 +216,6 @@ func getFileListWLM(sParentDirPath string, userAuthToken string, sPasURL string)
 func buildWlmFileListUrl(sPasURL string) string {
 	//URL url = null;
 	sPasURL = sPasURL + "/restservice/files/list"
-	fmt.Println("sPasURL", sPasURL)
 	return sPasURL
 }
 
@@ -297,9 +295,6 @@ func readSeriesFileFromPBSServerUserToken(sFilePath string, sFilePortServerName 
 
 	var sUrl = buildMultiDownloadUrl(sFilePortServerName, sFilePath, sPasURL)
 	var urlParameters = buildURLParametres(filesToDownload, sFilePath)
-
-	fmt.Println("sUrl", sUrl)
-	fmt.Println("urlParameters", urlParameters)
 	var fileDownloadStartTime = time.Now()
 	var zipFile = DownloadMultiFileAsZip(sUrl, urlParameters, userAuthToken, GetDirPath(fileToWrite))
 	var fileDownloadEndTime = time.Now()
@@ -327,7 +322,7 @@ func readSeriesFileFromPBSServerUserToken(sFilePath string, sFilePortServerName 
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return fileToWrite
 
@@ -464,7 +459,7 @@ func readFileFromFilePortServerUserToken(sFilePath string, username string, pass
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	return fileToWrite

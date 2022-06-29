@@ -2,7 +2,6 @@ package graph
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 )
 
@@ -17,7 +16,6 @@ func writeToInstanceFile(temporaryPLTFile string,
 	if len(lstPlotRequestResponseModel) > 0 {
 
 		for i := 0; i < len(lstPlotRequestResponseModel); i++ {
-			fmt.Println(" lstPlotRequestResponseModel[i].Queries", lstPlotRequestResponseModel[i].Queries)
 			Plotinstance.Instances.PLT =
 				append(Plotinstance.Instances.PLT, PLT{
 					Queries:             lstPlotRequestResponseModel[i].Queries,

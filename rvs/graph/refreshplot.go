@@ -3,8 +3,8 @@ package graph
 import (
 	"altair/rvs/common"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -25,7 +25,7 @@ func RefreshPlt(sRequestData []byte, username string, password string, sToken st
 	jsonFile, err := os.Open(PlotRefreshModel.TemporaryPLTFilePath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()

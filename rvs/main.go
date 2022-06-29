@@ -8,7 +8,6 @@ import (
 	"altair/rvs/toc"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,10 +17,6 @@ import (
 )
 
 var tocRequest datamodel.TOCRequest
-
-var plotRequestResModel graph.PlotRequestResModel
-
-var fileInformationModel datamodel.FileInformationModel
 
 func getToc(sServerName string, resultfilepath string, sIsSeriesFile string,
 	sJobId string, sJobState string, token string, pasURL string) (string, error) {
@@ -56,7 +51,7 @@ func getRVPToc(fileInformationModel datamodel.FileInformationModel, sToken strin
 	return toc.GetRVPToc(fileInformationModel, sToken, username, password)
 }
 
-func getPlotGraph(plotRequestCaller string, username string, password string, token string) string {
+func getPlotGraph(plotRequestResModel graph.PlotRequestResModel, plotRequestCaller string, username string, password string, token string) string {
 
 	return graph.GetPlotGraphExtractor(plotRequestResModel, plotRequestCaller, username, password, token)
 }
@@ -87,10 +82,6 @@ func overlayPlotData(sRequestData []byte, username string, password string, sTok
 }
 
 func getTOCData(w http.ResponseWriter, r *http.Request) {
-	// get the body of our POST request
-	// unmarshal this into a new Article struct
-	// append this to our Articles array.
-	fmt.Println("inside get toc call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
 	query := r.URL.Query()
@@ -112,7 +103,7 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			fmt.Printf("unexpected overlay plot error: %s\n", err)
+			log.Printf("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -123,13 +114,9 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
-	// get the body of our POST request
-	// unmarshal this into a new Article struct
-	// append this to our Articles array.
-	fmt.Println("inside get filter toc call")
+
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
-	fmt.Println(tocRequest)
 
 	query := r.URL.Query()
 
@@ -140,7 +127,6 @@ func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
 	sIsSeriesFile := query.Get("seriesfile")
 	pasURL := query.Get("pasURL")
 	token := query.Get("Authorization")
-	fmt.Println(tocRequest.PostProcessingType)
 	var output, err = getFilterToc(sServerName, resultfilepath, sIsSeriesFile,
 		tocRequest, sJobId, sJobState, strings.TrimSpace(token), pasURL)
 	if err != nil {
@@ -151,7 +137,7 @@ func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", filtertocErr.Errortype)
 			w.Header().Set("error-details", filtertocErr.Errordetails)
 		default:
-			fmt.Printf("unexpected overlay plot error: %s\n", err)
+			log.Printf("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -161,13 +147,8 @@ func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getModelTOCData(w http.ResponseWriter, r *http.Request) {
-	// get the body of our POST request
-	// unmarshal this into a new Article struct
-	// append this to our Articles array.
-	fmt.Println("inside model toc call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
-	fmt.Println(tocRequest)
 
 	query := r.URL.Query()
 	jobid := query.Get("jobid")
@@ -186,7 +167,7 @@ func getModelTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			fmt.Printf("unexpected overlay plot error: %s\n", err)
+			log.Printf("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -197,10 +178,7 @@ func getModelTOCData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
-	// get the body of our POST request
-	// unmarshal this into a new Article struct
-	// append this to our Articles array.
-	fmt.Println("inside get toc call")
+	var fileInformationModel datamodel.FileInformationModel
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &fileInformationModel)
 	token := r.Header.Get("Authorization")
@@ -214,7 +192,7 @@ func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			fmt.Printf("unexpected overlay plot error: %s\n", err)
+			log.Printf("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -225,15 +203,15 @@ func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPlotGraphData(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("inside plot graph call")
+	var plotRequestResModel graph.PlotRequestResModel
+
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &plotRequestResModel)
-	fmt.Println(plotRequestResModel)
 
 	query := r.URL.Query()
 	token := r.Header.Get("Authorization")
 	plotRequestCaller := query.Get("plotRequestCaller")
-	var output = getPlotGraph(plotRequestCaller, "pbsworks", "admin@123", token)
+	var output = getPlotGraph(plotRequestResModel, plotRequestCaller, "pbsworks", "admin@123", token)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(output))
@@ -241,7 +219,6 @@ func getPlotGraphData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSupportedFilePatternsForAllServersNew(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("inside getSupportedFilePatternsForAllServersNew call")
 
 	token := r.Header.Get("Authorization")
 	var output = getSupportedFilePatternsForAllServers(token)
@@ -252,7 +229,6 @@ func getSupportedFilePatternsForAllServersNew(w http.ResponseWriter, r *http.Req
 }
 
 func isHyperWorksComposeConfigured(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("inside isHyperWorksComposeConfigured call")
 	var output = GetHWConfigDetails()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -261,7 +237,6 @@ func isHyperWorksComposeConfigured(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSeriesFilePatternsForAllServerNew(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("inside getSupportedFilePatternsForAllServersNew call")
 
 	token := r.Header.Get("Authorization")
 	var output = getSeriesFilePatternsForAllServer(token)
@@ -271,8 +246,6 @@ func getSeriesFilePatternsForAllServerNew(w http.ResponseWriter, r *http.Request
 
 }
 func saveInstance(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("inside save instance call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
 	query := r.URL.Query()
@@ -287,7 +260,7 @@ func saveInstance(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", saveplotErr.Errortype)
 			w.Header().Set("error-details", saveplotErr.Errordetails)
 		default:
-			fmt.Printf("unexpected save plot error: %s\n", err)
+			log.Printf("unexpected save plot error: %s\n", err)
 		}
 
 	}
@@ -298,8 +271,6 @@ func saveInstance(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewPlot(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("inside view Plot call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
 	query := r.URL.Query()
@@ -314,7 +285,6 @@ func viewPlot(w http.ResponseWriter, r *http.Request) {
 
 func refreshPlot(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("inside refresh Plot call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	token := r.Header.Get("Authorization")
 	var output = refreshPlotData(reqBody, "pbsworks", "admin@123", token)
@@ -325,8 +295,6 @@ func refreshPlot(w http.ResponseWriter, r *http.Request) {
 }
 
 func overlayPlot(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("inside overlay Plot call")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	token := r.Header.Get("Authorization")
 
@@ -339,7 +307,7 @@ func overlayPlot(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", saveplotErr.Errortype)
 			w.Header().Set("error-details", saveplotErr.Errordetails)
 		default:
-			fmt.Printf("unexpected overlay plot error: %s\n", err)
+			log.Printf("unexpected overlay plot error: %s\n", err)
 		}
 
 	}

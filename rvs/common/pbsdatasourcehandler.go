@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -45,20 +44,17 @@ func ResolvePBSPortDataSource(datasource datamodel.ResourceDataSource, username 
 	var sPasURL = PbsServerData.PasURL
 
 	if IsWindows() {
-		fmt.Println("Windows Server")
+		log.Println("Windows Server")
 	} else {
 		log.Println("Checking if user " + username + " has read permission on file ")
 		var arrCmd []string
 		if Is32BitOS() {
 			arrCmd = append(arrCmd, GetRSHome()+"/bin/linux32/CheckPermission.sh")
 		} else {
-			fmt.Println("Linux 64 Server")
 			arrCmd = append(arrCmd, GetRSHome()+"/bin/linux64/CheckPermission.sh")
 		}
 		arrCmd = append(arrCmd, sFilePath)
-		fmt.Println("arrCmd", arrCmd)
 		var iExitCode = RunCommand(arrCmd, username, password)
-		fmt.Println("iExitCode ", iExitCode)
 		if iExitCode == 0 {
 			log.Println("user " + username + " has read permission on file " + sFilePath)
 			log.Println(
@@ -204,7 +200,6 @@ func downloadPBSSeriesFileOnLinux(sFilePath string, sJobId string, bIsJobRunning
 	var fileDownloaded = readSeriesPBSFileFromPBSServerUserToken(sFilePath, sJobId, bIsJobRunning, sServerName, sPortNo,
 		isPASSecure, username, password, pbsusername, pbspassword,
 		dataSource, userAuthToken, lstChangedFiles, "", sPASUrl)
-	fmt.Println(fileDownloaded)
 	return fileDownloaded
 
 }
@@ -301,6 +296,7 @@ func parsePbsFileListJson(response []byte) []FileModel {
 	return data.Data.FileModel
 
 }
+
 func getAllPbsFilesList(mapCurrentFileVsModTime map[string]int64) []string {
 
 	var lstChangedFiles []string
@@ -325,8 +321,6 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 
 	var sUrl = buildPbsMultiDownloadUrl(bIsJobRunning, sPASUrl)
 	var urlParameters = buildPbsURLParametres(filesToDownload, sFilePath, sJobId)
-	fmt.Println("sUrl", sUrl)
-	fmt.Println("urlParameters", urlParameters)
 	var fileDownloadStartTime = time.Now()
 	var zipFile = DownloadMultiFileAsZip(sUrl, urlParameters, userAuthToken, GetDirPath(fileToWrite))
 	var fileDownloadEndTime = time.Now()
@@ -351,14 +345,13 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 		JobState = "R"
 	}
 	var lastModTime = GetLastModificationTime(JobState, sJobId, sPASUrl, sFilePath, userAuthToken)
-	fmt.Println("lastModTime", lastModTime)
 	// Set original last modification time
 	log.Println("Setting last modification time received from datasource on the local temp file ", fileToWrite)
 	var timeInMilllis, _ = strconv.ParseInt(lastModTime, 10, 64)
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return fileToWrite
 
@@ -445,7 +438,7 @@ func readFileFromPBSServerUserToken(sFilePath string,
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return fileToWrite
 
@@ -475,8 +468,6 @@ func buildDownloadUrl(sServerName string, sPortNo string, isSecure bool, serverS
 }
 
 func downloadPBSFile(sUrl string, userAuthToken string) string {
-
-	fmt.Println("urlstring:", sUrl)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest("GET", sUrl, nil)
 	if err != nil {

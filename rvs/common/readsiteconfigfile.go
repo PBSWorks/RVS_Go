@@ -2,8 +2,8 @@ package common
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -61,7 +61,7 @@ func Readconfigfile() {
 	xmlFile, err := os.Open(GetRSHome() + Siteconfigfile)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on

@@ -2,8 +2,8 @@ package toc
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -57,7 +57,7 @@ func readTOCAndWriteFilterTOC(plottocfile string) string {
 	jsonFile, err := os.Open(plottocfile)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -77,6 +77,5 @@ func readTOCAndWriteFilterTOC(plottocfile string) string {
 	if filterTOCstring, err := json.MarshalIndent(plot, "", "    "); err == nil {
 		return string(filterTOCstring)
 	}
-	fmt.Println(string(filterTOCstring))
 	return string(filterTOCstring)
 }

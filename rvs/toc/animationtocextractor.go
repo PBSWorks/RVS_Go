@@ -22,7 +22,7 @@ const TEMP_MODEL_FILE_TAG = "$#$HWE_RS_TEMP_MODEL_FILE$#$"
 
 func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile string,
 	sTOCRequest datamodel.TOCRequest, sJobId string, sJobState string, token string, pasURL string) (string, error) {
-	fmt.Println("Hello ANIMATION!")
+
 	var username string
 	var password string
 	var resulrdatasourceerr error
@@ -53,11 +53,11 @@ func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile s
 
 	aimData, err := ioutil.ReadFile(fileAnimTOCOutput) // just pass the file name
 	if err != nil {
-		fmt.Print(err)
+		log.Print(err)
 	}
 	modelData, err := ioutil.ReadFile(fileModelComponents) // just pass the file name
 	if err != nil {
-		fmt.Print(err)
+		log.Print(err)
 	}
 
 	animoutput := string(aimData)

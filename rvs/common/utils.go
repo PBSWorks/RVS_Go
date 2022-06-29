@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math/rand"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -48,6 +49,9 @@ const BEGIN_PLOT = "BEGIN_PLOT"
 const END_PLOT = "END_PLOT"
 const ENGLISH_CSV_FILE_DELIMITER = ","
 const GERMAN_CSV_FILE_DELIMITER = ";"
+const SIMULATION_START_INDEX = 0
+const SIMULATION_END_INDEX = -1
+const RVP_PLOT_QUERY_FILE_NAME_PART = "TmpRVPQuery.xml"
 
 const STATISTICS_TAG = "Statistics"
 const STATISTIC_TAG = "Statistic"
@@ -172,7 +176,22 @@ func GetDirPath(Filepath string) string {
  * @param delimiter
  * @return
  */
+// func BreakStringWithDelimiter(line string, delimiter string) []string {
+// 	var arrStringTokens = strings.Split(line, delimiter)
+// 	return arrStringTokens
+// }
+
 func BreakStringWithDelimiter(line string, delimiter string) []string {
-	var arrStringTokens = strings.Split(line, delimiter)
-	return arrStringTokens
+	pattern, _ := regexp.Compile(delimiter)
+	matcher := pattern.FindString(line)
+	var lstArguments []string
+	if matcher != "" {
+		var arrArguments = pattern.Split(line, -1)
+		for i := 0; i < len(arrArguments); i++ {
+			if IsValidString(arrArguments[i]) {
+				lstArguments = append(lstArguments, strings.TrimSpace(arrArguments[i]))
+			}
+		}
+	}
+	return lstArguments
 }

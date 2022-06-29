@@ -4,8 +4,8 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/exception"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -55,7 +55,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 	jsonFile, err := os.Open(PlotOverlayModel.TemporaryPltFilePath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -106,7 +106,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 			var overlaidQueries queries
 			var lstQueryCTypes = originalPlotModelList[0].Queries.Query
 			for _, quryObj := range lstQueryCTypes {
-				var obj query
+				var obj Query
 
 				obj.ResultDataSourceRef = append(obj.ResultDataSourceRef, quryObj.ResultDataSourceRef...)
 				obj.OutputSource = quryObj.OutputSource
@@ -127,10 +127,9 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 			cmPlotRequestResponseModel.PlotRequestResponseModel = PlotRequestResponseModel
 			var indexValue = common.GetUniqueRandomIntValue()
 			var plotQueries = buildPlotQueries(cmPlotRequestResponseModel, sToken, indexValue)
-
+			var responses Res
 			if isRVPPlotQuery(plotQueries.Query[0]) {
-				// responses = m_rmPortalService.getRVPPlot(plotQueries, coreConnectorModel, httpHeaders,
-				// 	sToken)
+				responses = getRVPPlot(plotQueries, cmPlotRequestResponseModel.ResultFileInformationModel, username, password)
 			} else {
 
 				/*
@@ -140,16 +139,16 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 				for _, query := range lstQueries {
 					query.PlotResultQuery.DataQuery.SimulationFilter = simulationFilter{}
 				}
-				var responses = getNativePlot(plotQueries.Query, plotQueries.ResultDataSource[0], cmPlotRequestResponseModel.ResultFileInformationModel,
+				responses = getNativePlot(plotQueries.Query, plotQueries.ResultDataSource[0], cmPlotRequestResponseModel.ResultFileInformationModel,
 					username, password)
-				if len(responses.Responses.Responselist) > 0 {
-					cmPlotRequestResponseModel.PlotRequestResponseModel.Responses = responses.Responses
-				} else {
-					return "", &exception.RVSError{
-						Errordetails: "",
-						Errorcode:    "10047",
-						Errortype:    "CODE_RESULT_FILE_NOT_SUPPORTED_FOR_PLOT",
-					}
+			}
+			if len(responses.Responses.Responselist) > 0 {
+				cmPlotRequestResponseModel.PlotRequestResponseModel.Responses = responses.Responses
+			} else {
+				return "", &exception.RVSError{
+					Errordetails: "",
+					Errorcode:    "10047",
+					Errortype:    "CODE_RESULT_FILE_NOT_SUPPORTED_FOR_PLOT",
 				}
 			}
 
@@ -211,7 +210,7 @@ func setQueryCounter(lastModelList plotRequestResponseModel, overlaidPlotModelLi
 	}
 }
 
-func getXQueryCounter(lstQueryList []query) int {
+func getXQueryCounter(lstQueryList []Query) int {
 	var lastQueryNumber = 1
 	if len(lstQueryList) > 0 {
 		var queryModel = lstQueryList[0]
@@ -224,7 +223,7 @@ func getXQueryCounter(lstQueryList []query) int {
 	return lastQueryNumber
 }
 
-func getYQueryCounter(lstQueryList []query) int {
+func getYQueryCounter(lstQueryList []Query) int {
 	var lastQueryNumber = 1
 	if len(lstQueryList) > 0 {
 		var queryModel = lstQueryList[len(lstQueryList)-1]

@@ -115,10 +115,10 @@ type plotDataModel struct {
 
 type queries struct {
 	ResultDataSource []datamodel.ResourceDataSource `json:"resultDataSource"`
-	Query            []query                        `json:"query"`
+	Query            []Query                        `json:"query"`
 }
 
-type query struct {
+type Query struct {
 	ResultDataSourceRef []resultDataSourceRef `json:"resultDataSourceRef"`
 	OutputSource        outputSource          `json:"outputSource"`
 

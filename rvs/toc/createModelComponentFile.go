@@ -3,8 +3,8 @@ package toc
 import (
 	"altair/rvs/common"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -63,7 +63,7 @@ func readModelfile(modelfilepath string, modelComponentsFilePath string) {
 	jsonFile, err := os.Open(modelfilepath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -115,20 +115,15 @@ func updateModelComponentsFile(modelComponentsFilePath string) {
 	}
 
 	var v Models
-
-	//add Statistics
 	var elePoolData Pools
 	var nodePoolData Pools
 	var assemPoolData Pools
 	var partsPoolData Pools
 	var sysPoolData Pools
 
-	//var modelComponent ModelComponents
-
 	for i := 0; i < len(model.Model.Statistics); i++ {
 		arrStatVal := strings.Fields(model.Model.Statistics[i])
 		firstWord, secondWord := arrStatVal[0], arrStatVal[1]
-		fmt.Println(firstWord, secondWord)
 		if strings.Contains(firstWord, common.NODES) {
 			nodes, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfNodes = nodes
@@ -141,8 +136,6 @@ func updateModelComponentsFile(modelComponentsFilePath string) {
 		} else if strings.Contains(firstWord, common.PARTS) {
 			parts, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfParts = parts
-		} else if strings.Contains(firstWord, common.ASSEMBLIES) {
-			//assemblies = secondWord
 		}
 	}
 

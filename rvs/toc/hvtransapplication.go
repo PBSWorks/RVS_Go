@@ -2,7 +2,7 @@ package toc
 
 import (
 	"altair/rvs/common"
-	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -17,7 +17,7 @@ func executeAnimationApplication(sConfigFilePath string, sResultFilePath string,
 	common.RunCommand(buildCommandArray(sConfigFilePath, sResultFilePath, sResultFilePath), username, password)
 	enddt := time.Now()
 	diff := enddt.Sub(startdt)
-	fmt.Println(diff)
+	log.Println(diff)
 }
 
 func buildCommandArray(sConfigFilePath string, sResultFilePath string, sModelFilePath string) []string {
@@ -45,13 +45,13 @@ func buildCommandArray(sConfigFilePath string, sResultFilePath string, sModelFil
 
 	info, err := os.Stat(sExec)
 	if os.IsNotExist(err) {
-		fmt.Println(info)
-		fmt.Println("HVtrans Execution file does not exists.")
+		log.Println(info)
+		log.Println("HVtrans Execution file does not exists.")
 	}
 	configfileInfo, configerr := os.Stat(sConfigFilePath)
 	if os.IsNotExist(configerr) {
-		fmt.Println(configfileInfo)
-		fmt.Println("Config script path not found.")
+		log.Println(configfileInfo)
+		log.Println("Config script path not found.")
 	}
 
 	// No space between -c and config file path as per hvtrans documentation
@@ -68,7 +68,6 @@ func buildCommandArray(sConfigFilePath string, sResultFilePath string, sModelFil
 	// {
 	//     lstOfCmdItems.add("-z" + sCompression);
 	// }
-	fmt.Println(lstOfCmdItems)
 
 	return lstOfCmdItems
 

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"fmt"
+	"log"
 	"os/exec"
 	"time"
 )
@@ -13,10 +13,8 @@ const ALTAIR_LICENSE_PATH_VALUE = "6200@10.145.13.38"
 
 func RunCommand(sArrCmd []string, username string, password string) int {
 	if isAIFImpersonationEnabled {
-		//	fmt.Println("Running with impersonation on")
 		return runCommandWithAIFImpersonation(sArrCmd[:], username, password, false)
 	} else {
-		fmt.Println("Running with impersonation off")
 		return -1
 	}
 }
@@ -24,7 +22,7 @@ func RunCommand(sArrCmd []string, username string, password string) int {
 func runCommandWithAIFImpersonation(sArrCmd []string, username string, password string, bNeedXvfb bool) int {
 
 	if len(sArrCmd) <= 0 {
-		fmt.Println("Recieved command is empty")
+		log.Println("Recieved command is empty")
 		return -1
 	}
 
@@ -68,7 +66,6 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 		}
 	}
 
-	fmt.Println("Command:", sArrEnvironment)
 	dtstart := time.Now()
 
 	cmd := exec.Command(runnerexecpath, sArrEnvironment...)
@@ -76,7 +73,7 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 	// Does not wait for command to complete before returning
 	if err := cmd.Start(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			fmt.Printf("Exit code is %d\n", exitError.ExitCode())
+			log.Printf("Exit code is %d\n", exitError.ExitCode())
 			exitCode = 1
 		}
 	}
@@ -85,14 +82,14 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 	if err := cmd.Wait(); err != nil {
 
 		if exitError, ok := err.(*exec.ExitError); ok {
-			fmt.Printf("Exit code is %d\n", exitError.ExitCode())
+			log.Printf("Exit code is %d\n", exitError.ExitCode())
 			exitCode = 1
 		}
 	}
 
 	dtend := time.Now()
 	diff := dtend.Sub(dtstart)
-	fmt.Println("Actual Command Execution Time: ", diff)
+	log.Println("Actual Command Execution Time: ", diff)
 
 	return exitCode
 }

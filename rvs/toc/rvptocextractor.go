@@ -4,7 +4,6 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
 	"encoding/json"
-	"log"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -55,11 +54,8 @@ func GetRVPToc(fileInformationModel datamodel.FileInformationModel, sToken strin
 
 	var rvpFileModeldata = getRVPFileModel(fileExtension, common.RvpFilesModel)
 
-	var sOutputFile = createRVPTOCOutputFile(username, password)
-
 	var rvpProcessDataModel RVPProcessDataModel
 	rvpProcessDataModel.RvpResultFilePath = sRVPResultFilePath
-	rvpProcessDataModel.ResponseFilePath = sOutputFile
 	rvpProcessDataModel.RvpFileModel = rvpFileModeldata
 	rvpProcessDataModel.RvpFileExtension = fileExtension
 
@@ -104,18 +100,6 @@ func getRVPFileModel(fileExtension string, rvpFilesModel datamodel.SupportedRVPF
 		}
 	}
 	return rvpFileModel
-}
-
-func createRVPTOCOutputFile(username string, password string) string {
-
-	outputFileFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES,
-		"RVP_PLOT")
-	outputFile := common.AllocateFile(common.RVP_TOC_OUTPUT_FILE_NAME_PART, outputFileFolder, username, password)
-	log.Println("Sucessfully created RVPResponse XML " + outputFile)
-
-	log.Println("Completed createRVPTOCOutputFile...")
-	return common.GetPlatformIndependentFilePath(outputFile, false)
-
 }
 
 func runDataExtractor(rvpGetTOCModel RVPProcessDataModel) datamodel.TOCForResultCType {

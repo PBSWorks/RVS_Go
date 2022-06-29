@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -51,55 +50,52 @@ const CURVE_DEFAULT_COLOR = "red"
 
 var matchingFileList MatchingFiles
 
-func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestCaller string, username string, password string, token string) string {
+func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestCaller string, username string,
+	password string, token string) string {
 
 	var indexValue = common.GetUniqueRandomIntValue()
 	var plotQueries = buildPlotQueries(plotRequestResModel, token, indexValue)
 	plotRequestResModel.PlotRequestResponseModel.Queries = plotQueries
-
+	var resData Res
 	if isRVPPlotQuery(plotRequestResModel.PlotRequestResponseModel.Queries.Query[0]) {
-		//responses = m_rmPortalService.getRVPPlot(allSimmilarPlotQueries, coreConnectorModel, null, token);
+		resData = getRVPPlot(plotQueries, plotRequestResModel.ResultFileInformationModel, username, password)
 	} else {
 
-		var resData = getNativePlot(plotQueries.Query, plotQueries.ResultDataSource[0], plotRequestResModel.ResultFileInformationModel,
+		resData = getNativePlot(plotQueries.Query, plotQueries.ResultDataSource[0], plotRequestResModel.ResultFileInformationModel,
 			username, password)
+	}
 
-		var responses = createResposes(resData.Responses, plotRequestResModel.PlotRequestResponseModel.Queries.Query, "")
+	var responses = createResposes(resData.Responses, plotRequestResModel.PlotRequestResponseModel.Queries.Query, "")
 
-		var lstcmPlotModel []plotRequestResponseModel
-		var lstPlotModel []plotRequestResponseModel
-		lstcmPlotModel = append(lstcmPlotModel, plotRequestResModel.PlotRequestResponseModel)
+	var lstcmPlotModel []plotRequestResponseModel
+	var lstPlotModel []plotRequestResponseModel
+	lstcmPlotModel = append(lstcmPlotModel, plotRequestResModel.PlotRequestResponseModel)
 
-		for i := 0; i < len(lstcmPlotModel); i++ {
-			//if (pasServer.equalsIgnoreCase(plotRequestResModel.ResultFileInformationModel.ServerName)) {
-			lstcmPlotModel[0].Responses = extractedResoresponses(responses, lstcmPlotModel[0].Queries)
-			lstPlotModel = append(lstPlotModel, lstcmPlotModel[0])
+	for i := 0; i < len(lstcmPlotModel); i++ {
+		lstcmPlotModel[0].Responses = extractedResoresponses(responses, lstcmPlotModel[0].Queries)
+		lstPlotModel = append(lstPlotModel, lstcmPlotModel[0])
+	}
+	var plotRequestResModeloutput = CreatePlotResponseModel(plotRequestResModel.ResultFileInformationModel, lstPlotModel,
+		getDataDirectoryPath(plotRequestResModel.ResultFileInformationModel.ServerName, username), len(lstPlotModel), token, plotRequestCaller)
 
-			//}
-		}
-		fmt.Println("lstPlotModel ", lstPlotModel)
-		var plotRequestResModeloutput = CreatePlotResponseModel(plotRequestResModel.ResultFileInformationModel, lstPlotModel,
-			getDataDirectoryPath(plotRequestResModel.ResultFileInformationModel.ServerName, username), len(lstPlotModel), token, plotRequestCaller)
+	if (plotRequestCaller == "FROM_TOC") ||
+		(plotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece.UserPrefereces[0].Name == "") ||
+		(len(plotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece.UserPrefereces) == 0) {
+		plotRequestResModeloutput.PlotRequestResponseModel.PlotMetaData.UserPreferece = GetUserPlotPreferences()
+	}
 
-		if (plotRequestCaller == "FROM_TOC") ||
-			(plotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece.UserPrefereces[0].Name == "") ||
-			(len(plotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece.UserPrefereces) == 0) {
-			plotRequestResModeloutput.PlotRequestResponseModel.PlotMetaData.UserPreferece = GetUserPlotPreferences()
-		}
-		var matchingFileListData = GetWLMFileList(plotRequestResModel.ResultFileInformationModel, token,
-			plotRequestResModel.ResultFileInformationModel.FilePath, plotRequestResModel.ResultFileInformationModel)
-		plotRequestResModeloutput.LstMatchingResultFiles = matchingFileListData
+	var matchingFileListData = GetWLMFileList(plotRequestResModel.ResultFileInformationModel, token,
+		plotRequestResModel.ResultFileInformationModel.FilePath, plotRequestResModel.ResultFileInformationModel)
+	plotRequestResModeloutput.LstMatchingResultFiles = matchingFileListData
 
-		if xmlstring, err := json.MarshalIndent(plotRequestResModeloutput, "", "    "); err == nil {
-			return string(xmlstring)
-		}
+	if xmlstring, err := json.MarshalIndent(plotRequestResModeloutput, "", "    "); err == nil {
+		return string(xmlstring)
 	}
 
 	return ""
 }
 
-func isRVPPlotQuery(singlequery query) bool {
-
+func isRVPPlotQuery(singlequery Query) bool {
 	if singlequery.RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName != "" {
 		return true
 	} else {
@@ -107,9 +103,10 @@ func isRVPPlotQuery(singlequery query) bool {
 	}
 }
 
-func getNativePlot(lstOfQuesries []query, datasource datamodel.ResourceDataSource, ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
+func getNativePlot(lstOfQuesries []Query, datasource datamodel.ResourceDataSource,
+	ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
 	if len(lstOfQuesries) == 0 {
-		fmt.Println("No query present in the request")
+		log.Println("No query present in the request")
 		res := Res{}
 		return res
 	}
@@ -136,11 +133,10 @@ func getNativePlot(lstOfQuesries []query, datasource datamodel.ResourceDataSourc
 	writeIntoOmlFile(lstOfQuesries, tempOmlFile, dataOutputFile, lstOfQuesries[0].ResultDataSourceRef[0].Id, sResultFilePath, sMasterOmlFileName)
 
 	toc.ExecuteComposeApplicatopn(tempOmlFile, username, password)
-
 	jsonFile, err := os.Open(dataOutputFile)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -199,7 +195,7 @@ func createMasterOMLFile() string {
 	return sMasterOmlFileName
 }
 
-func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile string, datasourceid string, sResultFilePath string, sMasterOmlFileName string) {
+func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile string, datasourceid string, sResultFilePath string, sMasterOmlFileName string) {
 
 	// Output file declaration
 	var sOutputFileName = strings.Replace(dataOutputFile, common.BACK_SLASH, common.FORWARD_SLASH, -1)
@@ -230,7 +226,7 @@ func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile s
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Type.Name == "") ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.DistantRequest.DataRequest.Name == "") ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.DistantRequest.Component.Name == "") {
-					fmt.Println("Query failed due to invalid data")
+					log.Println("Query failed due to invalid data")
 					// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 					// 	RMFrameworkException.TYPE_QUERY_FAILED);
 				}
@@ -245,7 +241,7 @@ func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile s
 				arrArguements := [6]string{}
 				if lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Index >= 1 {
 					if !common.IsValidString(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Name) {
-						fmt.Println("Invalid data: Subcase name missing in the query")
+						log.Println("Invalid data: Subcase name missing in the query")
 						// throw new RMFrameworkException(RMFrameworkException.CODE_INVALID_QUERY_DATA,
 						// 				RMFrameworkException.TYPE_QUERY_FAILED);
 					}
@@ -355,7 +351,7 @@ func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile s
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.ComponentIndex.Start <= 0) ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.ComponentIndex.End <= 0) ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.TimeStep.Index <= 0) {
-					fmt.Println("Query failed due to invalid data")
+					log.Println("Query failed due to invalid data")
 					// LOGGER.error(sMessage);
 					// throw new RMFrameworkException(RMFrameworkException.CODE_INVALID_QUERY_DATA,
 					// 				RMFrameworkException.TYPE_QUERY_FAILED);
@@ -394,7 +390,7 @@ func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile s
 				// 	sVarName = MATRIX_NAME
 				// }
 			} else {
-				fmt.Println("No query found")
+				log.Println("No query found")
 				// LOGGER.error(sMessage);
 				// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 				// 				RMFrameworkException.TYPE_QUERY_FAILED);
@@ -457,7 +453,7 @@ func writeIntoOmlFile(lstOfQueries []query, tempOmlFile string, dataOutputFile s
 				}
 			}
 		} else {
-			fmt.Println("No query found")
+			log.Println("No query found")
 			// LOGGER.error(sMessage);
 			// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 			// 				RMFrameworkException.TYPE_QUERY_FAILED);
@@ -558,7 +554,7 @@ func CreatePlotResponseModel(ResultFileInformationModel resultFileInformationMod
 	var mergedPlotTemporaryModel = getMergedPlotTemporaryModel(ResultFileInformationModel.FileName, lstPlotModel)
 
 	var plotAmChartsdataupdated = buildPlotAMChartsModel(mergedPlotTemporaryModel, sDataDirectoryPath, plotAmChartsdata)
-	fmt.Println("lstPlotModel check if datasource is there ", lstPlotModel)
+
 	var tempFilePath = createTemporaryPLTFile(sDataDirectoryPath, lstPlotModel)
 
 	/*added for plot comparision **/
@@ -570,6 +566,8 @@ func CreatePlotResponseModel(ResultFileInformationModel resultFileInformationMod
 	plotRequestResModel.PlotRequestResponseModel.PlotResponseModel.PlotAmCharts = plotAmChartsdataupdated
 	plotRequestResModel.PlotRequestResponseModel.PlotResponseModel.TemporaryPltFilePath = tempFilePath
 	plotRequestResModel.PlotRequestResponseModel.PlotResponseModel.NewlyAddedPltBlocksCount = newlyAddedPltBlocksCount
+	plotRequestResModel.PlotRequestResponseModel.PlotMetaData.TitleMetaData = lstPlotModel[0].PlotMetaData.TitleMetaData
+	plotRequestResModel.PlotRequestResponseModel.PlotMetaData.GraphMetaData = lstPlotModel[0].PlotMetaData.GraphMetaData
 
 	return plotRequestResModel
 
@@ -612,10 +610,9 @@ func getMergedPlotTemporaryModel(ResultFileName string, plotRequestResponseModel
 	var lstPlotTemporaryModelList []PlotTemporaryModel
 	for i := 0; i < len(plotRequestResponseModelList); i++ {
 		if isRVPPlotQuery(plotRequestResponseModelList[i].Queries.Query[0]) {
-			//pltModel = readRVPPLTModel(plotRequestResponseModelList[i])
+			pltModel = readRVPPLTModel(ResultFileName, plotRequestResponseModelList[i])
 		} else {
 			pltModel = readNativePLTModel(ResultFileName, plotRequestResponseModelList[i])
-			fmt.Println("pltModel", pltModel)
 		}
 		lstPlotTemporaryModelList = append(lstPlotTemporaryModelList, pltModel)
 	}
@@ -654,7 +651,7 @@ func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel
 
 	var curveName string
 	//var strcQuery strcQuery
-	var plotQuery query
+	var plotQuery Query
 	var sLegendName string
 	var inlineQueryCTye inlineQuery
 	for index := 0; index < len(lstQueries); index++ {
@@ -693,12 +690,10 @@ func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel
 	var lstListCurvePoints [][]float64
 
 	var lstResponse = pltModel.Responses.Responselist
-
 	for i := 0; i < len(lstResponse); i++ {
 		var responseData = lstResponse[i].ResponseData
 		var ds = responseData.DataSource
 		lstListCurvePoints = append(lstListCurvePoints, ds.Items)
-
 	}
 
 	return PlotTemporaryModel{
@@ -709,7 +704,7 @@ func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel
 	}
 }
 
-func createResposes(response responses, lstQueryCType []query, sSessionId string) responses {
+func createResposes(response responses, lstQueryCType []Query, sSessionId string) responses {
 	if len(response.Responselist) > 0 {
 
 		for i := 0; i < len(response.Responselist); i++ {
@@ -769,8 +764,8 @@ func createAMChartFiles(plotMetaData titleMetaData, sDataDirectoryPath string, l
 	createCSVDataFiles(sDataDirectoryPath, lstMergedCurvePoints,
 		plotMetaData.XaxisTitle, plotMetaData.YaxisTitle, lstMergedCurveNames,
 		plotPointValueDecimalPrecision)
-
 }
+
 func createTemporaryPLTFile(sDataDirectoryPath string, lstPlotModel []plotRequestResponseModel) string {
 	_, err := os.Create(sDataDirectoryPath + "/" + TEMPORARY_PLT_FILE_NAME)
 
@@ -889,7 +884,7 @@ func getJobId(fileModel resultFileInformationModel) string {
 	if common.JOB_RUNNING_STATE == fileModel.JobState {
 		sJobId = fileModel.JobId
 	} else {
-		fmt.Println("Job is not in running state, no need of job id")
+		log.Println("Job is not in running state, no need of job id")
 	}
 	return sJobId
 }
@@ -923,7 +918,6 @@ func attachDatasourcesToQueries(PlotQueries queries, ResultDataSource datamodel.
 
 	PlotQueries.ResultDataSource = nil
 	PlotQueries.ResultDataSource = append(PlotQueries.ResultDataSource, ResultDataSource)
-
 	for i := 0; i < len(PlotQueries.Query); i++ {
 		PlotQueries.Query[i].ResultDataSourceRef = nil
 		var ResultDataSourceRef resultDataSourceRef
@@ -967,6 +961,97 @@ func mergeCurveNamesAndPoints(originalPLTModel PlotTemporaryModel,
 	return PlotTemporaryModel{
 		lstCurveNames:  lstMergedCurveNames,
 		lstCurvesData:  lstMergedCurvePoints,
+		lstLegendNames: lstLegendNames,
+	}
+
+}
+
+func getRVPPlot(plotQueries queries, ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
+	var tempQueries queries
+	for i := 0; i < len(plotQueries.ResultDataSource); i++ {
+		tempQueries.ResultDataSource = append(tempQueries.ResultDataSource, plotQueries.ResultDataSource[i])
+	}
+	tempQueries.Query = append(tempQueries.Query, plotQueries.Query[0])
+
+	var lstRVPQueries []Query
+	if len(tempQueries.Query[0].RvpPlotDataQuery.RvpPlotColumnInfo.ColumnNames) == 0 {
+		for i := 0; i < len(plotQueries.Query); i++ {
+			if isRVPQuery(plotQueries.Query[i]) {
+				lstRVPQueries = append(lstRVPQueries, plotQueries.Query[i])
+				tempQueries.Query[0].RvpPlotDataQuery.RvpPlotColumnInfo.ColumnNames =
+					append(tempQueries.Query[0].RvpPlotDataQuery.RvpPlotColumnInfo.ColumnNames, plotQueries.Query[i].RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName)
+			}
+		}
+	} else {
+		for i := 0; i < len(plotQueries.Query); i++ {
+			if isRVPQuery(plotQueries.Query[i]) {
+				lstRVPQueries = append(lstRVPQueries, plotQueries.Query[i])
+			}
+		}
+	}
+	return GetRVPPlotData(tempQueries, ResultFileInformationModel, username, password)
+}
+
+func isRVPQuery(QueryCtType Query) bool {
+	return QueryCtType.RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName != ""
+}
+
+func readRVPPLTModel(resultFileName string, pltModel plotRequestResponseModel) PlotTemporaryModel {
+	var plotMetaData = pltModel.PlotMetaData
+
+	var resultFileId = pltModel.Queries.Query[0].ResultDataSourceRef[0].Id
+
+	// get plot curve names
+	var lstQueries = pltModel.Queries.Query
+	var lstLegendNames []string
+	var lstCurveNames []string
+
+	var curveName string
+	//var strcQuery strcQuery
+	var plotQuery Query
+	var sLegendName string
+	var inlineQueryCTye inlineQuery
+
+	for index := 0; index < len(lstQueries); index++ {
+		plotQuery = lstQueries[index]
+		/*
+		 * Dont add the first query as it is for X Axis
+		 */
+		if index != 0 {
+
+			if plotQuery.RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName != "" {
+				var rvpPlotColumnInfoCType = plotQuery.RvpPlotDataQuery.RvpPlotColumnInfo
+				curveName = resultFileName + " : " + rvpPlotColumnInfoCType.ColumnName +
+					"(" + plotQuery.VarName + ")" + " :" + resultFileId
+				sLegendName = rvpPlotColumnInfoCType.ColumnName + "(" + plotQuery.VarName + ")"
+			} else {
+				inlineQueryCTye = plotQuery.PlotResultQuery.DataQuery.InlineQuery
+				if inlineQueryCTye.Title != "" {
+					curveName = resultFileName + ":" + inlineQueryCTye.Title + ":" +
+						inlineQueryCTye.Expression + "(" +
+						plotQuery.VarName + ")" + " :" + resultFileId
+					sLegendName = inlineQueryCTye.Title + "(" + plotQuery.VarName + ")"
+				}
+			}
+			lstCurveNames = append(lstCurveNames, curveName)
+			lstLegendNames = append(lstLegendNames, sLegendName)
+		}
+	}
+
+	var lstListCurvePoints [][]float64
+
+	var lstResponse = pltModel.Responses.Responselist
+
+	for i := 0; i < len(lstResponse); i++ {
+		var responseData = lstResponse[i].ResponseData
+		var ds = responseData.DataSource
+		lstListCurvePoints = append(lstListCurvePoints, ds.Items)
+	}
+
+	return PlotTemporaryModel{
+		PlotMetaData:   plotMetaData,
+		lstCurveNames:  lstCurveNames,
+		lstCurvesData:  lstListCurvePoints,
 		lstLegendNames: lstLegendNames,
 	}
 

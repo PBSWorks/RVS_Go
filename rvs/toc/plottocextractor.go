@@ -4,7 +4,6 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
 	"bufio"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -57,7 +56,7 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 
 	b, err := ioutil.ReadFile(sTOCOutputFile) // just pass the file name
 	if err != nil {
-		fmt.Print(err)
+		log.Print(err)
 	}
 	output := string(b)
 
