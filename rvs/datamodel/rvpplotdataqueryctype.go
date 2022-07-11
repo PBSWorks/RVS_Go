@@ -2,28 +2,22 @@ package datamodel
 
 type RVPPlotDataQueryCType struct {
 	RVPSimulationQuery *RvpsimulationQuery `json:"simulationQuery"`
-	RVPPlotColumnInfo  rvpPlotColumnInfo   `json:"rvpPlotColumnInfo"`
+	RVPPlotColumnInfo  RvpPlotColumnInfo   `json:"rvpPlotColumnInfo"`
 }
 
 type RvpsimulationQuery struct {
-	RVPSimulationRangeBasedQuery *rvpsimulationRangeBasedQuery `json:"simulationRangeBasedQuery"`
-	RVPSimulationCountBasedQuery *rvpsimulationCountBasedQuery `json:"simulationCountBasedQuery"`
+	RVPSimulationRangeBasedQuery *RvpsimulationRangeBasedQuery `json:"simulationRangeBasedQuery"`
+	RVPSimulationCountBasedQuery *RvpsimulationCountBasedQuery `json:"simulationCountBasedQuery"`
 }
 
-type rvpsimulationRangeBasedQuery struct {
+type RvpsimulationRangeBasedQuery struct {
 	StartIndex int `json:"startIndex"`
 	EndIndex   int `json:"endIndex"`
 	Step       int `json:"step"`
 }
 
-type rvpsimulationCountBasedQuery struct {
+type RvpsimulationCountBasedQuery struct {
 	StartIndex int `json:"startIndex"`
 	Count      int `json:"count"`
 	Step       int `json:"step"`
-}
-
-type rvpPlotColumnInfo struct {
-	PlotName    string   `json:"plotName"`
-	ColumnNames []string `json:"columnNames"`
-	ColumnName  string   `json:"columnName"`
 }

@@ -2,6 +2,7 @@ package common
 
 import (
 	"altair/rvs/datamodel"
+	"altair/rvs/utils"
 	"bufio"
 	"log"
 	"os"
@@ -9,12 +10,14 @@ import (
 	"strconv"
 	"strings"
 
+	l "altair/rvs/globlog"
+
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
 
 func RVPParsingStrategyFinder(rvpFileModel datamodel.RVPFileModel, resultFilePath string) datamodel.FileParsingStrategyModel {
-	var fileName = GetFileName(resultFilePath)
+	var fileName = utils.GetFileName(resultFilePath)
 	var correctFileParsingStrategyModel datamodel.FileParsingStrategyModel
 	var ListFileParsingStrategyModelData = rvpFileModel.FileParsingStrategiesModel.ListFileParsingStrategyModel
 	for i := 0; i < len(ListFileParsingStrategyModelData); i++ {
@@ -46,7 +49,7 @@ func RVPParsingStrategyFinder(rvpFileModel datamodel.RVPFileModel, resultFilePat
 			/*
 			 * Do not consider lines which are empty or contains comments
 			 */
-			if !IsValidString(line) || IsCommentLine(line, commentLinePrefix) {
+			if !utils.IsValidString(line) || utils.IsCommentLine(line, commentLinePrefix) {
 				continue
 			} else if foundColumnNamesLine && foundDataPointsLine {
 
@@ -54,16 +57,16 @@ func RVPParsingStrategyFinder(rvpFileModel datamodel.RVPFileModel, resultFilePat
 					correctFileParsingStrategyModel = fileParsingStrategyModel
 					break
 				} else {
-					log.Println("Parsing strategy having id " + fileParsingStrategyModel.Id + " is not correct for file name " + fileName)
+					l.Log().Info("Parsing strategy having id " + fileParsingStrategyModel.Id + " is not correct for file name " + fileName)
 					break
 				}
 			} else {
 				if foundColumnNamesLine {
 					dataPointsCount = dataPointsCount + getDataPointsCount(line, dataPointsLinePrefix, dataPointsDelimiter)
 					foundDataPointsLine = true
-				} else if IsValidString(columnNamesLinePrefix) {
-					if DoesLineContainPrefix(line, columnNamesLinePrefix) {
-						line = RemovePrefixFromLine(line, columnNamesLinePrefix)
+				} else if utils.IsValidString(columnNamesLinePrefix) {
+					if utils.DoesLineContainPrefix(line, columnNamesLinePrefix) {
+						line = utils.RemovePrefixFromLine(line, columnNamesLinePrefix)
 						columnNamesCount = columnNamesCount + getArgumentCountBasedOnDelimter(line, columnNamesDelimiter)
 					} else {
 						foundColumnNamesLine = true
@@ -83,7 +86,7 @@ func RVPParsingStrategyFinder(rvpFileModel datamodel.RVPFileModel, resultFilePat
 				correctFileParsingStrategyModel = fileParsingStrategyModel
 				//break
 			} else {
-				log.Println("Parsing strategy having id " + fileParsingStrategyModel.Id + "is not matching for file name " + fileName)
+				l.Log().Info("Parsing strategy having id " + fileParsingStrategyModel.Id + "is not matching for file name " + fileName)
 				break
 			}
 
@@ -94,7 +97,7 @@ func RVPParsingStrategyFinder(rvpFileModel datamodel.RVPFileModel, resultFilePat
 }
 
 func IsDataPointsValid(line string, delimiter string, numberLocale datamodel.NumberLocale) bool {
-	var arrDataPoints = BreakStringWithDelimiter(line, delimiter)
+	var arrDataPoints = utils.BreakStringWithDelimiter(line, delimiter)
 	if len(arrDataPoints) != 0 {
 		for i := 0; i < len(arrDataPoints); i++ {
 			if numberLocale.Language == "" {
@@ -121,9 +124,9 @@ func IsDataPointsValid(line string, delimiter string, numberLocale datamodel.Num
 
 func getDataPointsCount(line string, dataPointsLinePrefix string, dataPointsDelimiter string) int {
 	var dataPointsCount = 0
-	if IsValidString(dataPointsLinePrefix) {
-		if DoesLineContainPrefix(line, dataPointsLinePrefix) {
-			line = RemovePrefixFromLine(line, dataPointsLinePrefix)
+	if utils.IsValidString(dataPointsLinePrefix) {
+		if utils.DoesLineContainPrefix(line, dataPointsLinePrefix) {
+			line = utils.RemovePrefixFromLine(line, dataPointsLinePrefix)
 			dataPointsCount = dataPointsCount + getArgumentCountBasedOnDelimter(line, dataPointsDelimiter)
 		}
 	} else {
@@ -138,7 +141,7 @@ func getArgumentCountBasedOnDelimter(line string, delimiter string) int {
 	arrArgument := pattern.Split(line, -1)
 	var length = 0
 	for i := 0; i < len(arrArgument); i++ {
-		if IsValidString(arrArgument[i]) {
+		if utils.IsValidString(arrArgument[i]) {
 			length++
 		}
 	}

@@ -2,16 +2,17 @@ package graph
 
 import (
 	"altair/rvs/common"
+	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	l "altair/rvs/globlog"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
 func SaveInstance(sRequestData []byte, pasURL string, sToken string) (string, error) {
-	var instanceSaveModel InstanceSaveModel
-	var instances plotinstance
+	var instanceSaveModel datamodel.InstanceSaveModel
+	var instances datamodel.Plotinstance
 	json.Unmarshal(sRequestData, &instanceSaveModel)
 
 	//var filepath = "file=" + instanceSaveModel.ResultFileInformationModel.FilePath
@@ -34,7 +35,7 @@ func SaveInstance(sRequestData []byte, pasURL string, sToken string) (string, er
 	jsonFile, err := os.Open(instanceSaveModel.PlotSaveModelList[0].PlotResponseModel.TemporaryPltFilePath)
 
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	defer jsonFile.Close()
@@ -44,7 +45,7 @@ func SaveInstance(sRequestData []byte, pasURL string, sToken string) (string, er
 	json.Unmarshal([]byte(byteValue), &instances)
 
 	instances.Instances.PLT[0].PlotMetaData.UserPreferece.UserPrefereces = append(instances.Instances.PLT[0].PlotMetaData.UserPreferece.UserPrefereces,
-		userPrefereces{
+		datamodel.UserPrefereces{
 			Name:               "user_preferences",
 			CurveDatapointSize: USER_DATA_POINT_SIZE,
 			CurveLineThickness: USER_LINE_THICKNESS,

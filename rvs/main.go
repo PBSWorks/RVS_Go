@@ -2,23 +2,56 @@ package main
 
 import (
 	"altair/rvs/common"
+	"altair/rvs/database"
 	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	l "altair/rvs/globlog"
 	"altair/rvs/graph"
+	"altair/rvs/template"
 	"altair/rvs/toc"
+	"altair/rvs/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 )
 
-var tocRequest datamodel.TOCRequest
+func init() {
 
-func getToc(sServerName string, resultfilepath string, sIsSeriesFile string,
+	// Setting up the database connection
+
+	// for dev
+	// logPath := "../deploy/home/logs/executor/executor.log"
+
+	// for docker
+
+	logPath := os.ExpandEnv(utils.GetRSHome() + "/logs/resultmanager.log")
+	fmt.Println("logPath", logPath)
+	if _, err := os.Stat(logPath); err == nil {
+		os.Remove(logPath)
+	}
+
+	f, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		l.Log().Error("error opening file: %v", err)
+	}
+	wrt := io.MultiWriter(os.Stdout, f)
+
+	l.Log().SetOutput(wrt)
+	common.Readconfigfile()
+	database.SetupDb(common.GetDBUrl())
+
+}
+
+func getToc(tocRequest datamodel.TOCRequest, sServerName string, resultfilepath string, sIsSeriesFile string,
 	sJobId string, sJobState string, token string, pasURL string) (string, error) {
 
 	var tocType = tocRequest.PostProcessingType
@@ -40,7 +73,7 @@ func getFilterToc(sServerName string, resultfilepath string, sIsSeriesFile strin
 		tocRequest, sJobId, sJobState, token, pasURL, tocRequest.PlotFilter.Subcase.Name, tocRequest.PlotFilter.Type.Name)
 }
 
-func getModelToc(resultFilepath string, jobid string, jobstate string, server string, pasURL string,
+func getModelToc(tocRequest datamodel.TOCRequest, resultFilepath string, jobid string, jobstate string, server string, pasURL string,
 	token string, username string, password string) (string, error) {
 
 	return toc.GetModelToc(resultFilepath, jobid, jobstate, server, pasURL, token, username, password)
@@ -51,7 +84,7 @@ func getRVPToc(fileInformationModel datamodel.FileInformationModel, sToken strin
 	return toc.GetRVPToc(fileInformationModel, sToken, username, password)
 }
 
-func getPlotGraph(plotRequestResModel graph.PlotRequestResModel, plotRequestCaller string, username string, password string, token string) string {
+func getPlotGraph(plotRequestResModel datamodel.PlotRequestResModel, plotRequestCaller string, username string, password string, token string) string {
 
 	return graph.GetPlotGraphExtractor(plotRequestResModel, plotRequestCaller, username, password, token)
 }
@@ -81,7 +114,45 @@ func overlayPlotData(sRequestData []byte, username string, password string, sTok
 	return graph.OverlayPlt(sRequestData, username, password, sToken)
 }
 
+func saveTemplateData(sRequestData []byte, username string, password string, sToken string) (string, error) {
+	return template.SaveTemplate(sRequestData, username, sToken)
+}
+
+func getSelectedTemplateDetails(servername string, templateid string, isfilterReq bool,
+	resultfilepath string, seriesfile string, jobid string, jobstate string, pasURL string, token string, tocReq string) (string, error) {
+	return template.GetSelectedTemplateDetails(servername, templateid, isfilterReq,
+		resultfilepath, seriesfile, jobid, jobstate, pasURL, token, tocReq)
+}
+func SetTemplateAsDefault(servername string, fileextension string, sTemplateId string,
+	seriesfile bool, username string) (bool, error) {
+	return template.SetTemplateAsDefaultTemplate(servername, fileextension, sTemplateId, seriesfile, username)
+}
+
+func DeleteTemplate(sTemplateId string) (bool, error) {
+	return template.DeleteSelectedTemplate(sTemplateId)
+}
+
+func updateTemplateData(sRequestData []byte, username string, password string, sToken string) (bool, error) {
+	return template.UpdateTemplate(sRequestData, username, sToken)
+}
+
+func getAllTemplates(servername string, isfilterReq bool, resultfilepath string, seriesfile bool,
+	jobid string, jobstate string, pasURL string, token string, username string, fileextension string,
+	tocReq string) (string, error) {
+	return template.GetTemplates(servername, isfilterReq,
+		resultfilepath, seriesfile, jobid, jobstate, pasURL, token, username, fileextension, tocReq)
+}
+
+func DuplicateTemplate(servername string, templatename string, templateid string,
+	isfilterReqbool bool, resultfilepath string, seriesfilebool bool,
+	jobid string, jobstate string, pasURL string, token string, reqBody []byte) (string, error) {
+	return template.DuplicateTemplateData(servername, templatename, templateid,
+		isfilterReqbool, resultfilepath, seriesfilebool,
+		jobid, jobstate, pasURL, token, reqBody)
+}
+
 func getTOCData(w http.ResponseWriter, r *http.Request) {
+	var tocRequest datamodel.TOCRequest
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
 	query := r.URL.Query()
@@ -92,7 +163,7 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 	sIsSeriesFile := query.Get("seriesfile")
 	pasURL := query.Get("pasURL")
 	token := r.Header.Get("Authorization")
-	var output, err = getToc(sServerName, resultfilepath, sIsSeriesFile,
+	var output, err = getToc(tocRequest, sServerName, resultfilepath, sIsSeriesFile,
 		sJobId, sJobState, strings.TrimSpace(token), pasURL)
 
 	if err != nil {
@@ -103,7 +174,7 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			log.Printf("unexpected overlay plot error: %s\n", err)
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -114,7 +185,7 @@ func getTOCData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
-
+	var tocRequest datamodel.TOCRequest
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
 
@@ -137,7 +208,7 @@ func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", filtertocErr.Errortype)
 			w.Header().Set("error-details", filtertocErr.Errordetails)
 		default:
-			log.Printf("unexpected overlay plot error: %s\n", err)
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -147,6 +218,7 @@ func getTOCFilterData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getModelTOCData(w http.ResponseWriter, r *http.Request) {
+	var tocRequest datamodel.TOCRequest
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &tocRequest)
 
@@ -157,7 +229,7 @@ func getModelTOCData(w http.ResponseWriter, r *http.Request) {
 	modelfilepath := query.Get("modelfilepath")
 	pasURL := query.Get("pasURL")
 	token := r.Header.Get("Authorization")
-	var output, err = getModelToc(modelfilepath, jobid, jobstate, server, pasURL, strings.TrimSpace(token), tocRequest.User, tocRequest.Pwd)
+	var output, err = getModelToc(tocRequest, modelfilepath, jobid, jobstate, server, pasURL, strings.TrimSpace(token), tocRequest.User, tocRequest.Pwd)
 
 	if err != nil {
 		var tocErr *exception.RVSError
@@ -167,7 +239,7 @@ func getModelTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			log.Printf("unexpected overlay plot error: %s\n", err)
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -192,7 +264,7 @@ func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", tocErr.Errortype)
 			w.Header().Set("error-details", tocErr.Errordetails)
 		default:
-			log.Printf("unexpected overlay plot error: %s\n", err)
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -203,7 +275,7 @@ func getRVPTOCData(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPlotGraphData(w http.ResponseWriter, r *http.Request) {
-	var plotRequestResModel graph.PlotRequestResModel
+	var plotRequestResModel datamodel.PlotRequestResModel
 
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(reqBody, &plotRequestResModel)
@@ -260,7 +332,7 @@ func saveInstance(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", saveplotErr.Errortype)
 			w.Header().Set("error-details", saveplotErr.Errordetails)
 		default:
-			log.Printf("unexpected save plot error: %s\n", err)
+			l.Log().Error("unexpected save plot error: %s\n", err)
 		}
 
 	}
@@ -307,7 +379,225 @@ func overlayPlot(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("error-type", saveplotErr.Errortype)
 			w.Header().Set("error-details", saveplotErr.Errordetails)
 		default:
-			log.Printf("unexpected overlay plot error: %s\n", err)
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(output))
+
+}
+
+func saveTemplate(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	token := r.Header.Get("Authorization")
+
+	var output, err = saveTemplateData(reqBody, "pbsworks", "admin@123", token)
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(output))
+
+}
+
+func getTemplateDetails(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	token := r.Header.Get("Authorization")
+
+	query := r.URL.Query()
+	servername := query.Get("servername")
+	templateid := query.Get("templateid")
+	isfilterReq := query.Get("isfilterReq")
+	resultfilepath := query.Get("resultfilepath")
+	seriesfile := query.Get("seriesfile")
+	jobid := query.Get("jobid")
+	jobstate := query.Get("jobstate")
+	pasURL := query.Get("pasURL")
+
+	isfilterReqbool, _ := strconv.ParseBool(isfilterReq)
+	var output, err = getSelectedTemplateDetails(servername, templateid, isfilterReqbool,
+		resultfilepath, seriesfile, jobid, jobstate, pasURL, token, string(reqBody))
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(output))
+
+}
+
+func setTemplateAsDefault(w http.ResponseWriter, r *http.Request) {
+	//token := r.Header.Get("Authorization")
+
+	query := r.URL.Query()
+	servername := query.Get("servername")
+	fileextension := query.Get("fileextension")
+	sTemplateId := query.Get("templateid")
+	seriesfile := query.Get("seriesfile")
+
+	seriesfilebool, _ := strconv.ParseBool(seriesfile)
+	var output, err = SetTemplateAsDefault(servername, fileextension, sTemplateId,
+		seriesfilebool, "pbsworks")
+
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strconv.FormatBool(output)))
+
+}
+
+func deleteTemplate(w http.ResponseWriter, r *http.Request) {
+	//token := r.Header.Get("Authorization")
+
+	query := r.URL.Query()
+	sTemplateId := query.Get("templateid")
+	fmt.Println(" start call sTemplateId", sTemplateId)
+	var output, err = DeleteTemplate(sTemplateId)
+
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strconv.FormatBool(output)))
+
+}
+
+func updateTemplate(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	token := r.Header.Get("Authorization")
+
+	var output, err = updateTemplateData(reqBody, "pbsworks", "admin@123", token)
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(strconv.FormatBool(output)))
+
+}
+
+func getTemplates(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	token := r.Header.Get("Authorization")
+
+	query := r.URL.Query()
+	servername := query.Get("servername")
+	isfilterReq := query.Get("isfilterReq")
+	resultfilepath := query.Get("resultfilepath")
+	seriesfile := query.Get("seriesfile")
+	jobid := query.Get("jobid")
+	jobstate := query.Get("jobstate")
+	pasURL := query.Get("pasURL")
+	fileextension := query.Get("fileextension")
+
+	isfilterReqbool, _ := strconv.ParseBool(isfilterReq)
+	seriesfilebool, _ := strconv.ParseBool(seriesfile)
+	var output, err = getAllTemplates(servername, isfilterReqbool,
+		resultfilepath, seriesfilebool, jobid, jobstate, pasURL, token, "pbsworks", fileextension, string(reqBody))
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
+		}
+
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(output))
+
+}
+
+func duplicateTemplate(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	token := r.Header.Get("Authorization")
+
+	query := r.URL.Query()
+	servername := query.Get("servername")
+	templatename := query.Get("templatename")
+	templateid := query.Get("templateid")
+	isfilterReq := query.Get("isfilterReq")
+	resultfilepath := query.Get("resultfilepath")
+	seriesfile := query.Get("seriesfile")
+	jobid := query.Get("jobid")
+	jobstate := query.Get("jobstate")
+	pasURL := query.Get("pasURL")
+
+	isfilterReqbool, _ := strconv.ParseBool(isfilterReq)
+	seriesfilebool, _ := strconv.ParseBool(seriesfile)
+	var output, err = DuplicateTemplate(servername, templatename, templateid,
+		isfilterReqbool, resultfilepath, seriesfilebool, jobid, jobstate, pasURL, token, reqBody)
+	if err != nil {
+		var saveplotErr *exception.RVSError
+		switch {
+		case errors.As(err, &saveplotErr):
+			w.Header().Set("error-code", saveplotErr.Errorcode)
+			w.Header().Set("error-type", saveplotErr.Errortype)
+			w.Header().Set("error-details", saveplotErr.Errordetails)
+		default:
+			l.Log().Error("unexpected overlay plot error: %s\n", err)
 		}
 
 	}
@@ -319,7 +609,7 @@ func overlayPlot(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	common.Readconfigfile()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/toc/result", getTOCData).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/toc/result/filter", getTOCFilterData).Methods("POST")
@@ -333,5 +623,12 @@ func main() {
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/rvp/plt/view", viewPlot).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/refresh/plot", refreshPlot).Methods("POST")
 	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/plot/overlay", overlayPlot).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/save/template/data", saveTemplate).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/template/details", getTemplateDetails).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/set/default/template", setTemplateAsDefault).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/delete/template", deleteTemplate).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/update/template/data", updateTemplate).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/templates", getTemplates).Methods("POST")
+	r.HandleFunc("/pbsworks/api/resultmanagerservice/rest/rmservice/duplicate/template/data", duplicateTemplate).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8083", r))
 }

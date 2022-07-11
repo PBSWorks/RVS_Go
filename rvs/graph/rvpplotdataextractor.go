@@ -4,6 +4,8 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -33,7 +35,8 @@ type TemporarySimulationQuery struct {
 	Count      int `json:"count"`
 }
 
-func GetRVPPlotData(plotQueries queries, ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
+func GetRVPPlotData(plotQueries datamodel.Queries, ResultFileInformationModel datamodel.ResultFileInformationModel,
+	username string, password string) datamodel.Res {
 	ValidateListQueries(plotQueries, username, password)
 	/*
 	* Right now there will be only one query
@@ -46,7 +49,7 @@ func GetRVPPlotData(plotQueries queries, ResultFileInformationModel resultFileIn
 	return readPlotData(plotQueries.ResultDataSource[0], rvpPlotDataQuery, ResultFileInformationModel, username, password, isCachingRequired)
 }
 
-func ValidateListQueries(plotQueries queries, username string, password string) error {
+func ValidateListQueries(plotQueries datamodel.Queries, username string, password string) error {
 
 	var lstResultDataSource = plotQueries.ResultDataSource
 
@@ -111,8 +114,8 @@ func ValidateListQueries(plotQueries queries, username string, password string) 
 }
 
 func readPlotData(rvpFileDataSource datamodel.ResourceDataSource,
-	rvpPlotDataQuery rvpPlotDataQuery, ResultFileInformationModel resultFileInformationModel,
-	username string, password string, isCachingRequired bool) Res {
+	rvpPlotDataQuery datamodel.RvpPlotDataQuery, ResultFileInformationModel datamodel.ResultFileInformationModel,
+	username string, password string, isCachingRequired bool) datamodel.Res {
 
 	var sJobId = ResultFileInformationModel.JobId
 	var sJobState = ResultFileInformationModel.JobState
@@ -126,12 +129,12 @@ func readPlotData(rvpFileDataSource datamodel.ResourceDataSource,
 	}
 
 	fileExtension := filepath.Ext(sRVPResultFilePath)
-	var rvpFileModeldata = getRVPFileModel(fileExtension, common.RvpFilesModel)
+	var rvpFileModeldata = getRVPFileModel(fileExtension, utils.RvpFilesModel)
 	//TODO caching
 
 	validateSimulationQuery(rvpPlotDataQuery.SimulationQuery)
 
-	var sTmpRVPQueryFile = createTmpOutputFile(username, password, common.RVP_PLOT_QUERY_FILE_NAME_PART)
+	var sTmpRVPQueryFile = createTmpOutputFile(username, password, utils.RVP_PLOT_QUERY_FILE_NAME_PART)
 
 	if xmlstring, err := json.MarshalIndent(rvpPlotDataQuery, "", "    "); err == nil {
 		f, err := os.Create(sTmpRVPQueryFile)
@@ -170,7 +173,7 @@ func getRVPFileModel(fileExtension string, rvpFilesModel datamodel.SupportedRVPF
 	return rvpFileModel
 }
 
-func validateSimulationQuery(SimulationQuery simulationQuery) error {
+func validateSimulationQuery(SimulationQuery datamodel.SimulationQuery) error {
 
 	if SimulationQuery.SimulationCountBasedQuery.Count == 0 && SimulationQuery.SimulationRangeBasedQuery.Step == 0 {
 		return &exception.RVSError{
@@ -254,7 +257,7 @@ func validateSimulationQuery(SimulationQuery simulationQuery) error {
 func createTmpOutputFile(username string, password string, sFileName string) string {
 
 	var outputFileFolder = common.AllocateUniqueFolder(
-		common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "RVP_GRAPH")
+		common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_TOC_XML_FILES, "RVP_GRAPH")
 	var outputFile = common.AllocateFile(sFileName, outputFileFolder, username, password)
 	return outputFile
 }
@@ -277,14 +280,14 @@ func getUniqueColumnNamesList(lstColumnNames []string) []string {
 
 }
 
-func runPlotDataExtractor(rvpGetPlotModel RVPProcessDataModel) Res {
+func runPlotDataExtractor(rvpGetPlotModel RVPProcessDataModel) datamodel.Res {
 
 	var rvpPlotDataQuery datamodel.RVPPlotDataQueryCType
 
 	jsonFile, err := os.Open(rvpGetPlotModel.RequestFilePath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	defer jsonFile.Close()
@@ -304,7 +307,7 @@ func runPlotDataExtractor(rvpGetPlotModel RVPProcessDataModel) Res {
 
 	var tempSimulationQuery = buildSimulationTempQuery(rvpPlotDataQuery.RVPSimulationQuery)
 
-	if strings.HasSuffix(rvpGetPlotModel.RvpFileExtension, common.RVP_FILE_EXTENSION) {
+	if strings.HasSuffix(rvpGetPlotModel.RvpFileExtension, utils.RVP_FILE_EXTENSION) {
 		rvpPlotDataModel, _ = RVPFilePlotDataExtractor(rvpGetPlotModel.RvpResultFilePath, rvpGetPlotModel, rvpPlotDataModel, tempSimulationQuery)
 
 	} else {
@@ -325,7 +328,7 @@ func buildSimulationTempQuery(RVPSimulationQueryCType *datamodel.RvpsimulationQu
 
 	if RVPSimulationQueryCType.RVPSimulationRangeBasedQuery != nil {
 		var tempRangeBasedSimulationQuery = RVPSimulationQueryCType.RVPSimulationRangeBasedQuery
-		if tempRangeBasedSimulationQuery.StartIndex == common.SIMULATION_START_INDEX {
+		if tempRangeBasedSimulationQuery.StartIndex == utils.SIMULATION_START_INDEX {
 			tempSimulationQuery.StartIndex = 1
 		} else {
 			tempSimulationQuery.StartIndex = tempRangeBasedSimulationQuery.StartIndex
@@ -336,11 +339,11 @@ func buildSimulationTempQuery(RVPSimulationQueryCType *datamodel.RvpsimulationQu
 	} else if RVPSimulationQueryCType.RVPSimulationCountBasedQuery != nil {
 		var simulationCountBasedQuery = RVPSimulationQueryCType.RVPSimulationCountBasedQuery
 
-		if simulationCountBasedQuery.StartIndex == common.SIMULATION_START_INDEX {
+		if simulationCountBasedQuery.StartIndex == utils.SIMULATION_START_INDEX {
 			simulationCountBasedQuery.StartIndex = 1
 		}
 
-		if simulationCountBasedQuery.StartIndex != common.SIMULATION_END_INDEX {
+		if simulationCountBasedQuery.StartIndex != utils.SIMULATION_END_INDEX {
 			if simulationCountBasedQuery.Step < 0 {
 				endIndex = simulationCountBasedQuery.StartIndex
 				startIndex = endIndex + simulationCountBasedQuery.Step*(simulationCountBasedQuery.Count-1)
@@ -375,11 +378,11 @@ func buildSimulationTempQuery(RVPSimulationQueryCType *datamodel.RvpsimulationQu
 
 }
 
-func buildResponses(rvpPlotDataModel RVPPlotDataModel, rvpPlotDataQuery datamodel.RVPPlotDataQueryCType) Res {
-	var resData Res
+func buildResponses(rvpPlotDataModel RVPPlotDataModel, rvpPlotDataQuery datamodel.RVPPlotDataQueryCType) datamodel.Res {
+	var resData datamodel.Res
 
 	var lstCurveNames = rvpPlotDataQuery.RVPPlotColumnInfo.ColumnNames
-	var Response response
+	var Response datamodel.Response
 	for i := 0; i < len(lstCurveNames); i++ {
 		var datapoints = rvpPlotDataModel.MapColumnPoints[lstCurveNames[i]]
 		var dataPointsfloat []float64

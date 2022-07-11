@@ -2,7 +2,6 @@ package datamodel
 
 type TOCForResultCType struct {
 	RVPToc RVPToc `json:"rvpToc"`
-	//SupportedPPType PostProcessingTypeSType `json:"supportedPPType"`
 }
 
 type RVPToc struct {

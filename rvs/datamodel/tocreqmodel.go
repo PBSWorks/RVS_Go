@@ -18,20 +18,9 @@ type plotFilter struct {
 	Filter  filter  `json:"filter"`
 }
 
-type subcase struct {
-	Name  string `json:"name"`
-	Index int    `json:"index"`
-	Id    string `json:"id"`
-}
-
-type Type struct {
-	Name  string `json:"name"`
-	Index int    `json:"index"`
-	Id    int    `json:"id"`
-}
 type filter struct {
-	Id      int    `json:"id"`
+	Id      *int   `json:"id"`
 	GetNext bool   `json:"getNext"`
 	Start   string `json:"start"`
-	Count   int    `json:"count"`
+	Count   int64  `json:"count"`
 }

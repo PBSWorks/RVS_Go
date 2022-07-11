@@ -3,6 +3,7 @@ package common
 import (
 	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	"altair/rvs/utils"
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
@@ -14,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	l "altair/rvs/globlog"
 )
 
 var PBSDSDownloadConcurrentRequest pbsDSDownloadConcurrentRequest
@@ -31,7 +34,7 @@ type DownloadedPBSDSObject struct {
 
 func ResolvePBSPortDataSource(datasource datamodel.ResourceDataSource, username string, password string) (string, error) {
 
-	log.Println("Entering method resolveDataSource")
+	l.Log().Info("Entering method resolveDataSource")
 
 	var sFilePath = datasource.FilePath
 	var PbsServerData = datasource.PbsServer
@@ -43,39 +46,39 @@ func ResolvePBSPortDataSource(datasource datamodel.ResourceDataSource, username 
 	var paspassword = datasource.PbsServer.UserPassword
 	var sPasURL = PbsServerData.PasURL
 
-	if IsWindows() {
-		log.Println("Windows Server")
+	if utils.IsWindows() {
+		l.Log().Info("Windows Server")
 	} else {
-		log.Println("Checking if user " + username + " has read permission on file ")
+		l.Log().Info("Checking if user " + username + " has read permission on file ")
 		var arrCmd []string
-		if Is32BitOS() {
-			arrCmd = append(arrCmd, GetRSHome()+"/bin/linux32/CheckPermission.sh")
+		if utils.Is32BitOS() {
+			arrCmd = append(arrCmd, utils.GetRSHome()+"/bin/linux32/CheckPermission.sh")
 		} else {
-			arrCmd = append(arrCmd, GetRSHome()+"/bin/linux64/CheckPermission.sh")
+			arrCmd = append(arrCmd, utils.GetRSHome()+"/bin/linux64/CheckPermission.sh")
 		}
 		arrCmd = append(arrCmd, sFilePath)
 		var iExitCode = RunCommand(arrCmd, username, password)
 		if iExitCode == 0 {
-			log.Println("user " + username + " has read permission on file " + sFilePath)
-			log.Println(
+			l.Log().Info("user " + username + " has read permission on file " + sFilePath)
+			l.Log().Info(
 				"Adding file path as custom entry within datasource to be used by subsequent request")
 			datasource.Custom.Any = append(datasource.Custom.Any, sFilePath)
 			return sFilePath, nil
 		} else if iExitCode == 1 {
-			log.Println("User " + username + " does not have direct permission on file " + sFilePath + ", lets download it")
+			l.Log().Info("User " + username + " does not have direct permission on file " + sFilePath + ", lets download it")
 			var sJobId = datasource.PbsServer.JobId
 			var sJobStatus = datasource.PbsServer.JobStatus
 			var bIsJobRunning = false
 
-			if PBS_JOB_EXIT_STATE == sJobStatus {
+			if utils.PBS_JOB_EXIT_STATE == sJobStatus {
 				var sMessage = "Job: " + sJobId + " in exit state."
-				log.Println(sMessage)
+				l.Log().Error(sMessage)
 				return "", &exception.RVSError{
-					Errordetails: "",
+					Errordetails: sMessage,
 					Errorcode:    "3004",
 					Errortype:    "TYPE_AUTH_FAILED",
 				}
-			} else if PBS_JOB_RUNNING_STATE == sJobStatus {
+			} else if utils.PBS_JOB_RUNNING_STATE == sJobStatus {
 				bIsJobRunning = true
 			}
 
@@ -105,38 +108,38 @@ func downloadFileFromPBSServer(sFilePath string, sJobId string, bIsJobRunning bo
 	username string, password string,
 	pbsusername string, pbspassword string, datasource datamodel.ResourceDataSource, userAuthToken string, sPASUrl string) string {
 
-	log.Println("Entering method downloadFileFromPBSServer")
+	l.Log().Info("Entering method downloadFileFromPBSServer")
 	var startTime = time.Now()
-	log.Println("Search existing object used for downloading from download concurrent request manager")
-	log.Println("This helps in performance in case more than one user has asked for same file from same job")
+	l.Log().Info("Search existing object used for downloading from download concurrent request manager")
+	l.Log().Info("This helps in performance in case more than one user has asked for same file from same job")
 
 	var downloadedPbsObject = GetDownloadedPASFileObject(sFilePath, sJobId)
 	//downloadedFileObject.Lock()
 	var fileDownloaded string
 
 	if downloadedPbsObject.LocalFilePath == "" {
-		log.Println("First download request, going to download the file")
+		l.Log().Info("First download request, going to download the file")
 
 		if datasource.SeriesFile {
-			log.Println("Downloading series file...")
+			l.Log().Info("Downloading series file...")
 			fileDownloaded = downloadPBSSeriesFileOnLinux(sFilePath, sJobId, bIsJobRunning,
 				sServerName, sPortNo, isPASSecure,
 				username, password, pbsusername, pbspassword,
 				datasource, userAuthToken, sPASUrl)
 		} else {
-			log.Println("Downloading non series file...")
+			l.Log().Info("Downloading non series file...")
 			fileDownloaded = downloadFileOnLinux(sFilePath, sJobId, bIsJobRunning, sServerName,
 				sPortNo, isPASSecure, username, password, pbsusername, pbspassword,
 				datasource, userAuthToken, sPASUrl)
 			// set the response on file download object for other waiting threads
-			log.Println("Setting downloaded file absolute path in downloadedFileObject to be used by other thread")
+			l.Log().Info("Setting downloaded file absolute path in downloadedFileObject to be used by other thread")
 		}
 		downloadedPbsObject.LocalFilePath = fileDownloaded
 	}
 
 	//downloadedFileObject.Unlock()
 	var endTime = time.Now()
-	log.Println("File Download Time ", endTime.Sub(startTime))
+	l.Log().Info("File Download Time ", endTime.Sub(startTime))
 	return fileDownloaded
 
 }
@@ -148,12 +151,12 @@ func downloadFileFromPBSServer(sFilePath string, sJobId string, bIsJobRunning bo
      *
 	 **/
 func GetDownloadedPASFileObject(sRemoteFilePath string, sJobId string) DownloadedPBSDSObject {
-	log.Println("Entering method DownloadedPBSDSObject")
-	var sFilePath = GetPlatformIndependentFilePath(sRemoteFilePath, false)
-	log.Println("Looking for existing request for file path " + sRemoteFilePath + " and job id " + sJobId)
+	l.Log().Info("Entering method DownloadedPBSDSObject")
+	var sFilePath = utils.GetPlatformIndependentFilePath(sRemoteFilePath, false)
+	l.Log().Info("Looking for existing request for file path " + sRemoteFilePath + " and job id " + sJobId)
 	var downloadedPbsObject = getExistingPBSRequest(sFilePath, sJobId)
 	if downloadedPbsObject.RemoteFilePath == "" {
-		log.Println("No existing request found, create new DownloadedFilePortDSObject")
+		l.Log().Info("No existing request found, create new DownloadedFilePortDSObject")
 		// No existing similar request - so build it and add it to the ongoing req list
 		var downloadedPbsObjectNew = DownloadedPBSDSObject{
 			RemoteFilePath:         sFilePath,
@@ -164,14 +167,14 @@ func GetDownloadedPASFileObject(sRemoteFilePath string, sJobId string) Downloade
 		PBSDSDownloadConcurrentRequest.LstOngoingRequests = append(PBSDSDownloadConcurrentRequest.LstOngoingRequests, downloadedPbsObjectNew)
 		return downloadedPbsObjectNew
 	} else {
-		log.Println("Increment the counter for DownloadedFilePortDSObject")
+		l.Log().Info("Increment the counter for DownloadedFilePortDSObject")
 		downloadedPbsObject.IOngoingRequestCounter = downloadedPbsObject.IOngoingRequestCounter + 1
 		return downloadedPbsObject
 	}
 }
 
 func getExistingPBSRequest(sRemoteFilePath string, jobId string) DownloadedPBSDSObject {
-	log.Println("Entering method getExistingRequest")
+	l.Log().Info("Entering method getExistingRequest")
 
 	for i := 0; i < len(PBSDSDownloadConcurrentRequest.LstOngoingRequests); i++ {
 		if PBSDSDownloadConcurrentRequest.LstOngoingRequests[i].RemoteFilePath == sRemoteFilePath &&
@@ -179,7 +182,7 @@ func getExistingPBSRequest(sRemoteFilePath string, jobId string) DownloadedPBSDS
 			return PBSDSDownloadConcurrentRequest.LstOngoingRequests[i]
 		}
 	}
-	log.Println("Found no existing request")
+	l.Log().Info("Found no existing request")
 	return DownloadedPBSDSObject{}
 }
 
@@ -187,10 +190,10 @@ func downloadPBSSeriesFileOnLinux(sFilePath string, sJobId string, bIsJobRunning
 	sServerName string, sPortNo string, isPASSecure bool,
 	username string, password string, pbsusername string, pbspassword string,
 	dataSource datamodel.ResourceDataSource, userAuthToken string, sPASUrl string) string {
-	log.Println("Entering method downloadPBSSeriesFileOnLinux")
+	l.Log().Info("Entering method downloadPBSSeriesFileOnLinux")
 
 	var lstChangedFiles []string
-	log.Println("Retrieving last modified time for all series files present")
+	l.Log().Info("Retrieving last modified time for all series files present")
 	var mapCurrentFileVsModTime = getPBSLastModificationTimeForParentDir(dataSource, sFilePath, bIsJobRunning, userAuthToken, sPASUrl)
 
 	//TODO ad cache code
@@ -206,28 +209,28 @@ func downloadPBSSeriesFileOnLinux(sFilePath string, sJobId string, bIsJobRunning
 
 func getPBSLastModificationTimeForParentDir(dataSource datamodel.ResourceDataSource, sFilePath string, bIsJobRunning bool,
 	userAuthToken string, sPASUrl string) map[string]int64 {
-	log.Println("Entering method getPBSLastModificationTimeForParentDir")
-	var sParentDirPath = GetPlatformIndependentFilePath(filepath.Dir(dataSource.FilePath), false)
+	l.Log().Info("Entering method getPBSLastModificationTimeForParentDir")
+	var sParentDirPath = utils.GetPlatformIndependentFilePath(filepath.Dir(dataSource.FilePath), false)
 	var mapFileVsModTime = make(map[string]int64)
 	var pbsServer = dataSource.PbsServer
 	var sJobId = ""
-	log.Println("Getting FileOperations port")
+	l.Log().Info("Getting FileOperations port")
 
-	log.Println("User:" + pbsServer.UserName + ": Checking file access permission: " + sParentDirPath)
+	l.Log().Info("User:" + pbsServer.UserName + ": Checking file access permission: " + sParentDirPath)
 	var sJobStatus = pbsServer.JobStatus
-	if PBS_JOB_RUNNING_STATE == sJobStatus {
+	if utils.PBS_JOB_RUNNING_STATE == sJobStatus {
 		sJobId = pbsServer.JobId
 	}
 
-	log.Println("Calling fileList operation on job id" + sJobId + " and parent dir path " + sParentDirPath)
+	l.Log().Info("Calling fileList operation on job id" + sJobId + " and parent dir path " + sParentDirPath)
 
 	var fileListResult = getPbsFileListWLM(sJobId, bIsJobRunning, sParentDirPath, userAuthToken, sPASUrl)
 
 	if len(fileListResult) != 0 {
-		log.Println("Parent dir may contain other files than series files. lets filter them")
+		l.Log().Info("Parent dir may contain other files than series files. lets filter them")
 		var lstFilteredFileData = filterFileData(fileListResult, sFilePath)
 
-		log.Println("Adding last modified time in a map for all the filtered files")
+		l.Log().Info("Adding last modified time in a map for all the filtered files")
 		for i := 0; i < len(lstFilteredFileData); i++ {
 			var sFileName = lstFilteredFileData[i].Filename
 			var lModTime = lstFilteredFileData[i].Modified
@@ -264,10 +267,10 @@ func getPbsFileListWLM(sJobId string, bIsJobRunning bool, sParentDirPath string,
 }
 
 func buildPbsFileListUrl(sPasURL string, bIsJobRunning bool) string {
-	if bIsJobRunning && strings.Contains(sPasURL, PAS_URL_VALUE) {
-		sPasURL = strings.Replace(sPasURL, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if bIsJobRunning && strings.Contains(sPasURL, utils.PAS_URL_VALUE) {
+		sPasURL = strings.Replace(sPasURL, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		sPasURL = sPasURL + REST_SERVICE_URL
+		sPasURL = sPasURL + utils.REST_SERVICE_URL
 	}
 	return (sPasURL + "/files/list")
 }
@@ -314,7 +317,7 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 	isPASSecure bool, username string, password string, pbsusername string, pbspassword string,
 	dataSource datamodel.ResourceDataSource, userAuthToken string, filesToDownload []string, fileToWrite string, sPASUrl string) string {
 
-	log.Println("Downloading file from WLM using WLM API")
+	l.Log().Info("Downloading file from WLM using WLM API")
 	if fileToWrite == "" {
 		fileToWrite = getDownloadFilePath(dataSource, username, password, sFilePath)
 	}
@@ -322,13 +325,13 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 	var sUrl = buildPbsMultiDownloadUrl(bIsJobRunning, sPASUrl)
 	var urlParameters = buildPbsURLParametres(filesToDownload, sFilePath, sJobId)
 	var fileDownloadStartTime = time.Now()
-	var zipFile = DownloadMultiFileAsZip(sUrl, urlParameters, userAuthToken, GetDirPath(fileToWrite))
+	var zipFile = DownloadMultiFileAsZip(sUrl, urlParameters, userAuthToken, utils.GetDirPath(fileToWrite))
 	var fileDownloadEndTime = time.Now()
-	log.Println("File Service Download Time ", fileDownloadEndTime.Sub(fileDownloadStartTime))
+	l.Log().Info("File Service Download Time ", fileDownloadEndTime.Sub(fileDownloadStartTime))
 	var wirteTime = time.Now()
 	if len(filesToDownload) != 1 {
-		log.Println("Downloading multifile as zip ")
-		_, err := Unzip(zipFile, GetDirPath(fileToWrite))
+		l.Log().Info("Downloading multifile as zip ")
+		_, err := Unzip(zipFile, utils.GetDirPath(fileToWrite))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -337,21 +340,21 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 			log.Fatal(e)
 		}
 	}
-	log.Println("File Service Download Time ", time.Since(wirteTime))
+	l.Log().Info("File Service Download Time ", time.Since(wirteTime))
 	// Get last modification time
-	log.Println("Getting last modification time of datasource")
+	l.Log().Info("Getting last modification time of datasource")
 	var JobState = ""
 	if bIsJobRunning {
 		JobState = "R"
 	}
 	var lastModTime = GetLastModificationTime(JobState, sJobId, sPASUrl, sFilePath, userAuthToken)
 	// Set original last modification time
-	log.Println("Setting last modification time received from datasource on the local temp file ", fileToWrite)
+	l.Log().Info("Setting last modification time received from datasource on the local temp file ", fileToWrite)
 	var timeInMilllis, _ = strconv.ParseInt(lastModTime, 10, 64)
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	return fileToWrite
 
@@ -359,10 +362,10 @@ func readSeriesPBSFileFromPBSServerUserToken(sFilePath string, sJobId string, bI
 
 func buildPbsMultiDownloadUrl(bIsJobRunning bool, sPASUrl string) string {
 
-	if bIsJobRunning && strings.Contains(sPASUrl, PAS_URL_VALUE) {
-		sPASUrl = strings.Replace(sPASUrl, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if bIsJobRunning && strings.Contains(sPASUrl, utils.PAS_URL_VALUE) {
+		sPASUrl = strings.Replace(sPASUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		sPASUrl = sPASUrl + REST_SERVICE_URL
+		sPASUrl = sPASUrl + utils.REST_SERVICE_URL
 	}
 	sPASUrl = sPASUrl + "/files/downloadMulti"
 
@@ -372,7 +375,7 @@ func buildPbsMultiDownloadUrl(bIsJobRunning bool, sPASUrl string) string {
 
 func buildPbsURLParametres(lstFilePath []string, sFilePath string, sJobID string) string {
 	var urlParameters = ""
-	var path = GetDirPath(sFilePath)
+	var path = utils.GetDirPath(sFilePath)
 	for i := 0; i < len(lstFilePath); i++ {
 		if i == 0 {
 			urlParameters = urlParameters + "paths=" + path + lstFilePath[i]
@@ -390,10 +393,10 @@ func downloadFileOnLinux(sFilePath string, sJobId string, bIsJobRunning bool, sS
 	sPortNo string, isPASSecure bool, username string, password string, pbsusername string, pbspassword string,
 	dataSource datamodel.ResourceDataSource, userAuthToken string, sPASUrl string) string {
 
-	log.Println("Entering downloadFileOnLinux downloadFile")
+	l.Log().Info("Entering downloadFileOnLinux downloadFile")
 	//TODO Cache
 
-	log.Println("Copying files via SCP/RVP failed. Falling back to AIF file copy...")
+	l.Log().Info("Copying files via SCP/RVP failed. Falling back to AIF file copy...")
 	var fileDownloaded = readFileFromPBSServerUserToken(sFilePath,
 		sJobId, bIsJobRunning, sServerName, sPortNo,
 		isPASSecure, username, password, pbsusername, pbspassword, dataSource, userAuthToken, sPASUrl)
@@ -406,11 +409,11 @@ func readFileFromPBSServerUserToken(sFilePath string,
 	sJobId string, bIsJobRunning bool, sServerName string, sPortNo string,
 	isPASSecure bool, username string, password string, pbsusername string, pbspassword string,
 	dataSource datamodel.ResourceDataSource, userAuthToken string, sPASUrl string) string {
-	log.Println("Downloading file from WLM using WLM API")
+	l.Log().Info("Downloading file from WLM using WLM API")
 	var fileToWrite = getPbsDownloadFilePath(dataSource, username, password, sFilePath)
-	log.Println("sJobId:" + sJobId + "bIsJobRunning" + strconv.FormatBool(bIsJobRunning))
+	l.Log().Info("sJobId:" + sJobId + "bIsJobRunning" + strconv.FormatBool(bIsJobRunning))
 	var sUrl = buildDownloadUrl(sServerName, sPortNo, isPASSecure, sFilePath, sJobId, bIsJobRunning, sPASUrl)
-	log.Println("downloadUrl:" + sUrl)
+	l.Log().Info("downloadUrl:" + sUrl)
 
 	var data = downloadPBSFile(sUrl, userAuthToken)
 
@@ -428,7 +431,7 @@ func readFileFromPBSServerUserToken(sFilePath string,
 		log.Fatal(dataerr2)
 	}
 	// Get last modification time
-	log.Println("Getting last modification time of datasource")
+	l.Log().Info("Getting last modification time of datasource")
 	var JobState = ""
 	if bIsJobRunning {
 		JobState = "R"
@@ -438,7 +441,7 @@ func readFileFromPBSServerUserToken(sFilePath string,
 
 	err := os.Chtimes(fileToWrite, time.Now(), time.UnixMilli(timeInMilllis))
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	return fileToWrite
 
@@ -446,24 +449,24 @@ func readFileFromPBSServerUserToken(sFilePath string,
 
 func getPbsDownloadFilePath(dataSource datamodel.ResourceDataSource, username string, passowrd string, sFilePath string) string {
 
-	var sFilePathNew = GetPlatformIndependentFilePath(sFilePath, false)
+	var sFilePathNew = utils.GetPlatformIndependentFilePath(sFilePath, false)
 
-	var parentFolder = AllocateUniqueFolder(SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+RM_DOWNLOADS, "DOWNLOAD")
+	var parentFolder = AllocateUniqueFolder(SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_DOWNLOADS, "DOWNLOAD")
 
-	var fileToWrite = AllocateFileWithGlobalPermission(GetFileName(sFilePathNew), parentFolder)
-	log.Println("Created temp file " + fileToWrite + " to store the pbs data source")
+	var fileToWrite = AllocateFileWithGlobalPermission(utils.GetFileName(sFilePathNew), parentFolder)
+	l.Log().Info("Created temp file " + fileToWrite + " to store the pbs data source")
 	return fileToWrite
 }
 
 func buildDownloadUrl(sServerName string, sPortNo string, isSecure bool, serverSideFilePath string, sJobId string,
 	bIsJobRunning bool, sPASUrl string) string {
-	if bIsJobRunning && strings.Contains(sPASUrl, PAS_URL_VALUE) {
-		sPASUrl = strings.Replace(sPASUrl, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if bIsJobRunning && strings.Contains(sPASUrl, utils.PAS_URL_VALUE) {
+		sPASUrl = strings.Replace(sPASUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		sPASUrl = sPASUrl + REST_SERVICE_URL
+		sPASUrl = sPASUrl + utils.REST_SERVICE_URL
 	}
 	sPASUrl = sPASUrl + "/files/download"
-	log.Println("downloadUrl:" + sPASUrl)
+	l.Log().Info("downloadUrl:" + sPASUrl)
 	return sPASUrl
 }
 

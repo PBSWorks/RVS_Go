@@ -3,6 +3,8 @@ package toc
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"bufio"
 	"io/ioutil"
 	"log"
@@ -10,10 +12,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-const PLOT_TOC_OUTPUT_FILE_NAME_PART = "PlotTOC.json"
-const PLOT_TOC_OUTPUT_OML_NAME_PART = "PlotTOC.oml"
-const PLOT_TOC_OML_FILE_NAME = "GetPlotTOC.oml"
 
 func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string,
 	sTOCRequest datamodel.TOCRequest, sJobId string, sJobState string, token string, pasURL string,
@@ -27,14 +25,14 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 	var datasource = buildTOCRequestForResult(sServerName, sResultFilePath,
 		sIsSeriesFile, sJobId, sJobState, token, pasURL)
 
-	outputFileFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "PLOT")
-	sTOCOutputFile := common.AllocateFile(PLOT_TOC_OUTPUT_FILE_NAME_PART, outputFileFolder, username, password)
-	sTOCOutputFile = common.GetPlatformIndependentFilePath(sTOCOutputFile, false)
-	plotOmlFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_SCRIPT_FILES, "PLOT")
-	plotOmlFile := common.AllocateFile(PLOT_TOC_OUTPUT_OML_NAME_PART, plotOmlFolder, username, password)
+	outputFileFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_TOC_XML_FILES, "PLOT")
+	sTOCOutputFile := common.AllocateFile(utils.PLOT_TOC_OUTPUT_FILE_NAME_PART, outputFileFolder, username, password)
+	sTOCOutputFile = utils.GetPlatformIndependentFilePath(sTOCOutputFile, false)
+	plotOmlFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_SCRIPT_FILES, "PLOT")
+	plotOmlFile := common.AllocateFile(utils.PLOT_TOC_OUTPUT_OML_NAME_PART, plotOmlFolder, username, password)
 
-	if common.IsValidString(sSubcaseName) && common.IsValidString(sTypeName) {
-		log.Printf("Request to fetch filter Plot TOC for subcase [%s] and result type [%s]",
+	if utils.IsValidString(sSubcaseName) && utils.IsValidString(sTypeName) {
+		l.Log().Info("Request to fetch filter Plot TOC for subcase [%s] and result type [%s]",
 			sTOCRequest.PlotFilter.Subcase.Name, sTOCRequest.PlotFilter.Type.Name)
 		bFetchFilteredTOC = true
 	}
@@ -49,14 +47,14 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 			return "", resulrdatasourceerr
 		}
 	}
-	sResultFilePath = strings.Replace(sResultFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
-	writeIntoOmlFile(plotOmlFile, sResultFilePath, sTOCOutputFile, common.GetRSHome()+common.TOC_MASTER_OML_FILE_NAME, bFetchFilteredTOC, sSubcaseName, sTypeName)
+	sResultFilePath = strings.Replace(sResultFilePath, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
+	writeIntoOmlFile(plotOmlFile, sResultFilePath, sTOCOutputFile, utils.GetRSHome()+utils.SCRIPTS, bFetchFilteredTOC, sSubcaseName, sTypeName)
 
 	ExecuteComposeApplicatopn(plotOmlFile, username, password)
 
 	b, err := ioutil.ReadFile(sTOCOutputFile) // just pass the file name
 	if err != nil {
-		log.Print(err)
+		l.Log().Error(err)
 	}
 	output := string(b)
 
@@ -65,7 +63,7 @@ func GetPlotToc(sServerName string, sResultFilePath string, sIsSeriesFile string
 		output = readTOCAndWriteFilterTOC(sTOCOutputFile)
 	}
 
-	res, err := common.PrettyString(output)
+	res, err := utils.PrettyString(output)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,7 +80,7 @@ func buildTOCRequestForResult(sServerName string, sResultFilePath string, sIsSer
 	pasServerJobModel.ServerName = sServerName
 	pasServerJobModel.PasURL = pasURL
 
-	var index = common.GetUniqueRandomIntValue()
+	var index = utils.GetUniqueRandomIntValue()
 	var isSeriesFile, _ = strconv.ParseBool(sIsSeriesFile)
 	return buildResultFileDataSource(token, index, sResultFilePath, isSeriesFile, sServerName, pasServerJobModel)
 
@@ -97,20 +95,22 @@ func buildResultFileDataSource(sToken string, index int64, filepath string, isSe
 func writeIntoOmlFile(tempOmlFile string, sResultFilePath string,
 	sTOCOutputFile string, sTOCMasterOmlFileName string, bFetchFilteredTOC bool, sSubcaseName string, sTypeName string) {
 
-	var firstline = "clc; clear; close all; tic();" + common.NEWLINE +
-		"global HWEP_RS_RESULTFILE;" + common.NEWLINE + "global SEQUENTIAL_REQ_END_INDEX;" +
-		common.NEWLINE + "HWEP_RS_RESULTFILE = " + common.SINGLE_QUOTE + sResultFilePath + common.SINGLE_QUOTE
+	var firstline = "clc; clear; close all; tic();" + utils.NEWLINE +
+		"global HWEP_RS_RESULTFILE;" + utils.NEWLINE + "global SEQUENTIAL_REQ_END_INDEX;" +
+		utils.NEWLINE + "HWEP_RS_RESULTFILE = " + utils.SINGLE_QUOTE + sResultFilePath + utils.SINGLE_QUOTE
 
-	var secondline = "global HWEP_RS_TOC_OUTPUTFILE;" + common.NEWLINE + "HWEP_RS_TOC_OUTPUTFILE = " + common.SINGLE_QUOTE + sTOCOutputFile + common.SINGLE_QUOTE
+	var secondline = "global HWEP_RS_TOC_OUTPUTFILE;" + utils.NEWLINE + "HWEP_RS_TOC_OUTPUTFILE = " +
+		utils.SINGLE_QUOTE + sTOCOutputFile + utils.SINGLE_QUOTE
 
-	var thirdline = "status = addpath (" + common.SINGLE_QUOTE + sTOCMasterOmlFileName + common.SINGLE_QUOTE + ");"
-	var forthline = "run (" + common.SINGLE_QUOTE + PLOT_TOC_OML_FILE_NAME + common.SINGLE_QUOTE + ");"
+	var thirdline = "status = addpath (" + utils.SINGLE_QUOTE + sTOCMasterOmlFileName + utils.SINGLE_QUOTE + ");"
+	var forthline = "run (" + utils.SINGLE_QUOTE + utils.PLOT_TOC_OML_FILE_NAME + utils.SINGLE_QUOTE + ");"
 
 	var fifthline string
 	if bFetchFilteredTOC {
-		fifthline = "getFilteredTOC(" + common.SINGLE_QUOTE + sSubcaseName + common.SINGLE_QUOTE + "," + common.SINGLE_QUOTE + sTypeName + common.SINGLE_QUOTE + ")" + common.NEWLINE
+		fifthline = "getFilteredTOC(" + utils.SINGLE_QUOTE + sSubcaseName + utils.SINGLE_QUOTE + "," +
+			utils.SINGLE_QUOTE + sTypeName + utils.SINGLE_QUOTE + ")" + utils.NEWLINE
 	} else {
-		fifthline = "getTOC" + common.NEWLINE
+		fifthline = "getTOC" + utils.NEWLINE
 	}
 
 	plottocfilecontent := []string{firstline, secondline, thirdline, forthline, fifthline}

@@ -1,13 +1,16 @@
 package common
 
 import (
+	"altair/rvs/utils"
 	"log"
 	"os"
 	"path/filepath"
+
+	l "altair/rvs/globlog"
 )
 
 func AllocateUniqueFolder(ParentsDir string, prefix string) string {
-	var folderpath string = filepath.Join(ParentsDir, getRandomString(prefix))
+	var folderpath string = filepath.Join(ParentsDir, utils.GetRandomString(prefix))
 	if _, err := os.Stat(folderpath); os.IsNotExist(err) {
 		os.MkdirAll(folderpath, os.ModePerm)
 	}
@@ -16,8 +19,8 @@ func AllocateUniqueFolder(ParentsDir string, prefix string) string {
 
 func AllocateFile(sFileName string, sParentDirAbsPath string, username string, password string) string {
 
-	if !IsValidString(sFileName) {
-		sFileName = TEMP_FILE_NAME
+	if !utils.IsValidString(sFileName) {
+		sFileName = utils.TEMP_FILE_NAME
 	}
 	var file string = filepath.Join(sParentDirAbsPath, sFileName)
 	arrCmd := []string{}
@@ -28,7 +31,7 @@ func AllocateFile(sFileName string, sParentDirAbsPath string, username string, p
 	arrCmd = append(arrCmd, scriptPath)
 	arrCmd = append(arrCmd, "FILE")
 
-	if IsWindows() {
+	if utils.IsWindows() {
 		arrCmd = append(arrCmd, file)
 	} else {
 		arrCmd = append(arrCmd, file)
@@ -39,32 +42,32 @@ func AllocateFile(sFileName string, sParentDirAbsPath string, username string, p
 
 func getCreateFileScriptPath() string {
 	var path string = ""
-	if IsWindows() {
-		if Is32BitOS() {
-			path = GetRSHome() + "/bin/win32/CreateFile.bat"
+	if utils.IsWindows() {
+		if utils.Is32BitOS() {
+			path = utils.GetRSHome() + "/bin/win32/CreateFile.bat"
 		} else {
-			path = GetRSHome() + "\\bin\\win64\\CreateFile.bat"
+			path = utils.GetRSHome() + "\\bin\\win64\\CreateFile.bat"
 		}
 	} else {
-		if Is32BitOS() {
-			path = GetRSHome() + "/bin/linux32/CreateFile.sh"
+		if utils.Is32BitOS() {
+			path = utils.GetRSHome() + "/bin/linux32/CreateFile.sh"
 		} else {
-			path = GetRSHome() + "/bin/linux64/CreateFile.sh"
+			path = utils.GetRSHome() + "/bin/linux64/CreateFile.sh"
 		}
 	}
 	return path
 }
 
 func AllocateFileWithGlobalPermission(sFileName string, sParentDirAbsPath string) string {
-	log.Println("Entering method allocateFileWithGlobalPermission")
-	log.Println("Creating file " + sParentDirAbsPath + "/" + sFileName + "with global permission for every one")
+	l.Log().Info("Entering method allocateFileWithGlobalPermission")
+	l.Log().Info("Creating file " + sParentDirAbsPath + "/" + sFileName + "with global permission for every one")
 	myfile, e := os.Create(sParentDirAbsPath + "/" + sFileName)
 	if e != nil {
 		log.Fatal(e)
 	}
-	log.Println(myfile)
+	l.Log().Info(myfile)
 	myfile.Chmod(0777)
 	myfile.Close()
-	log.Println("Created file " + sParentDirAbsPath + "/" + sFileName + " with global permission for every one")
+	l.Log().Info("Created file " + sParentDirAbsPath + "/" + sFileName + " with global permission for every one")
 	return sParentDirAbsPath + "/" + sFileName
 }

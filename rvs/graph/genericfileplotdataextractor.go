@@ -4,6 +4,7 @@ import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	"altair/rvs/utils"
 	"bufio"
 	"log"
 	"os"
@@ -50,29 +51,29 @@ func GenericFilePlotDataExtractor(RvpResultFilePath string,
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() && !finishedPlotDataReading {
 		var line = strings.TrimSpace(scanner.Text())
-		if !common.IsValidString(line) || strings.HasPrefix(line, common.COMMENT_STARTER) {
+		if !utils.IsValidString(line) || strings.HasPrefix(line, utils.COMMENT_STARTER) {
 			continue
-		} else if common.IsCommentLine(line, commentPrefix) {
+		} else if utils.IsCommentLine(line, commentPrefix) {
 			continue
 		}
 		if foundrvpColumnNamesLine {
 			counter++
 			populateDataPoints(counter, line, rvpPlotDataModel)
-		} else if common.IsValidString(columnNamesLinePrefix) {
-			if common.DoesLineContainPrefix(line, columnNamesLinePrefix) {
-				line = common.RemovePrefixFromLine(line, columnNamesLinePrefix)
+		} else if utils.IsValidString(columnNamesLinePrefix) {
+			if utils.DoesLineContainPrefix(line, columnNamesLinePrefix) {
+				line = utils.RemovePrefixFromLine(line, columnNamesLinePrefix)
 				columnNameBuilder.WriteString(line)
 			} else {
 				foundrvpColumnNamesLine = true
 				columnNames = columnNameBuilder.String()
-				arrColumnNames = common.BreakStringWithDelimiter(columnNames, columnNamesLineDelimiter)
+				arrColumnNames = utils.BreakStringWithDelimiter(columnNames, columnNamesLineDelimiter)
 				counter++
 				populateDataPoints(counter, line, rvpPlotDataModel)
 			}
 		} else {
 			foundrvpColumnNamesLine = true
 			columnNames = line
-			arrColumnNames = common.BreakStringWithDelimiter(columnNames, columnNamesLineDelimiter)
+			arrColumnNames = utils.BreakStringWithDelimiter(columnNames, columnNamesLineDelimiter)
 
 		}
 
@@ -83,7 +84,7 @@ func GenericFilePlotDataExtractor(RvpResultFilePath string,
 func populateDataPoints(counter int, line string, rvpPlotDataModel RVPPlotDataModel) error {
 	var arrColumnPoints []string
 	if rowToBePickedIndex == counter {
-		arrColumnPoints = common.BreakStringWithDelimiter(line, dataPointsDelimiter)
+		arrColumnPoints = utils.BreakStringWithDelimiter(line, dataPointsDelimiter)
 
 		for i := 0; i < len(arrColumnPoints); i++ {
 			arrColumnPoints[i] = strings.TrimSpace(arrColumnPoints[i])
@@ -106,9 +107,9 @@ func populateDataPoints(counter int, line string, rvpPlotDataModel RVPPlotDataMo
 				Errortype:    "TYPE_QUERY_FAILED",
 			}
 		} else {
-			common.PopulatePlotPointsData(rvpPlotDataModel.MapColumnPoints, arrColumnNames, arrColumnPoints, count, numberLocale)
+			utils.PopulatePlotPointsData(rvpPlotDataModel.MapColumnPoints, arrColumnNames, arrColumnPoints, count, numberLocale)
 			rowToBePickedIndex = rowToBePickedIndex + step
-			if endIndex != common.SIMULATION_END_INDEX && rowToBePickedIndex > endIndex {
+			if endIndex != utils.SIMULATION_END_INDEX && rowToBePickedIndex > endIndex {
 				finishedPlotDataReading = true
 			}
 		}

@@ -3,7 +3,9 @@ package graph
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
 	"altair/rvs/toc"
+	"altair/rvs/utils"
 	"bufio"
 	"bytes"
 	"crypto/tls"
@@ -48,15 +50,15 @@ const ENABLE_DATA_POINT = false
  */
 const CURVE_DEFAULT_COLOR = "red"
 
-var matchingFileList MatchingFiles
+var matchingFileList datamodel.MatchingFiles
 
-func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestCaller string, username string,
+func GetPlotGraphExtractor(plotRequestResModel datamodel.PlotRequestResModel, plotRequestCaller string, username string,
 	password string, token string) string {
 
-	var indexValue = common.GetUniqueRandomIntValue()
+	var indexValue = utils.GetUniqueRandomIntValue()
 	var plotQueries = buildPlotQueries(plotRequestResModel, token, indexValue)
 	plotRequestResModel.PlotRequestResponseModel.Queries = plotQueries
-	var resData Res
+	var resData datamodel.Res
 	if isRVPPlotQuery(plotRequestResModel.PlotRequestResponseModel.Queries.Query[0]) {
 		resData = getRVPPlot(plotQueries, plotRequestResModel.ResultFileInformationModel, username, password)
 	} else {
@@ -67,8 +69,8 @@ func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestC
 
 	var responses = createResposes(resData.Responses, plotRequestResModel.PlotRequestResponseModel.Queries.Query, "")
 
-	var lstcmPlotModel []plotRequestResponseModel
-	var lstPlotModel []plotRequestResponseModel
+	var lstcmPlotModel []datamodel.PlotRequestResponseModel
+	var lstPlotModel []datamodel.PlotRequestResponseModel
 	lstcmPlotModel = append(lstcmPlotModel, plotRequestResModel.PlotRequestResponseModel)
 
 	for i := 0; i < len(lstcmPlotModel); i++ {
@@ -76,7 +78,8 @@ func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestC
 		lstPlotModel = append(lstPlotModel, lstcmPlotModel[0])
 	}
 	var plotRequestResModeloutput = CreatePlotResponseModel(plotRequestResModel.ResultFileInformationModel, lstPlotModel,
-		getDataDirectoryPath(plotRequestResModel.ResultFileInformationModel.ServerName, username), len(lstPlotModel), token, plotRequestCaller)
+		utils.GetDataDirectoryPath(plotRequestResModel.ResultFileInformationModel.ServerName, username), len(lstPlotModel),
+		token, plotRequestCaller)
 
 	if (plotRequestCaller == "FROM_TOC") ||
 		(plotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece.UserPrefereces[0].Name == "") ||
@@ -95,7 +98,7 @@ func GetPlotGraphExtractor(plotRequestResModel PlotRequestResModel, plotRequestC
 	return ""
 }
 
-func isRVPPlotQuery(singlequery Query) bool {
+func isRVPPlotQuery(singlequery datamodel.Query) bool {
 	if singlequery.RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName != "" {
 		return true
 	} else {
@@ -103,14 +106,14 @@ func isRVPPlotQuery(singlequery Query) bool {
 	}
 }
 
-func getNativePlot(lstOfQuesries []Query, datasource datamodel.ResourceDataSource,
-	ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
+func getNativePlot(lstOfQuesries []datamodel.Query, datasource datamodel.ResourceDataSource,
+	ResultFileInformationModel datamodel.ResultFileInformationModel, username string, password string) datamodel.Res {
 	if len(lstOfQuesries) == 0 {
-		log.Println("No query present in the request")
-		res := Res{}
+		l.Log().Info("No query present in the request")
+		res := datamodel.Res{}
 		return res
 	}
-	var resData Res
+	var resData datamodel.Res
 	var tempOmlFile = createTempOMLFile(username, password)
 	var dataOutputFile = createDataOutputFile(username, password)
 	var sMasterOmlFileName = createMasterOMLFile()
@@ -136,7 +139,7 @@ func getNativePlot(lstOfQuesries []Query, datasource datamodel.ResourceDataSourc
 	jsonFile, err := os.Open(dataOutputFile)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -149,9 +152,9 @@ func getNativePlot(lstOfQuesries []Query, datasource datamodel.ResourceDataSourc
 
 }
 
-func extractedResoresponses(resData responses, Queries queries) responses {
+func extractedResoresponses(resData datamodel.Responses, Queries datamodel.Queries) datamodel.Responses {
 	var numOfQueries = len(Queries.Query)
-	var responsesForQueries responses
+	var responsesForQueries datamodel.Responses
 	// /var lstResponseCTypes []response
 	for i := 0; i < numOfQueries; i++ {
 		var responseCType = searchResponse(resData, Queries.Query[i].VarName)
@@ -162,8 +165,8 @@ func extractedResoresponses(resData responses, Queries queries) responses {
 	return responsesForQueries
 }
 
-func searchResponse(resData responses, queryid string) response {
-	var returnResponseCType response
+func searchResponse(resData datamodel.Responses, queryid string) datamodel.Response {
+	var returnResponseCType datamodel.Response
 	for i := 0; i < len(resData.Responselist); i++ {
 		if resData.Responselist[i].Id == queryid {
 			returnResponseCType = resData.Responselist[i]
@@ -174,14 +177,16 @@ func searchResponse(resData responses, queryid string) response {
 }
 
 func createTempOMLFile(username string, password string) string {
-	var tempOmlFolder = common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_SCRIPT_FILES, "PLOT_GRAPH")
-	var tempOmlFile = common.AllocateFile(common.TEMP_OML_FILE_NAME, tempOmlFolder, username, password)
+	var tempOmlFolder = common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+
+		utils.RM_SCRIPT_FILES, "PLOT_GRAPH")
+	var tempOmlFile = common.AllocateFile(utils.TEMP_OML_FILE_NAME, tempOmlFolder, username, password)
 	return tempOmlFile
 
 }
 
 func createDataOutputFile(username string, password string) string {
-	var dataOutputFolder = common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_OUTPUT_FILES, "PLOT_GRAPH")
+	var dataOutputFolder = common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+
+		utils.RM_OUTPUT_FILES, "PLOT_GRAPH")
 	var dataOutputFile = common.AllocateFile("RawData.json", dataOutputFolder, username, password)
 	return dataOutputFile
 
@@ -189,32 +194,32 @@ func createDataOutputFile(username string, password string) string {
 
 func createMasterOMLFile() string {
 
-	var sMasterOmlFileName = common.GetRSHome() + common.Graph_MASTER_OML_FILE_NAME
+	var sMasterOmlFileName = utils.GetRSHome() + utils.SCRIPTS
 
-	sMasterOmlFileName = strings.Replace(sMasterOmlFileName, common.BACK_SLASH, common.FORWARD_SLASH, -1)
+	sMasterOmlFileName = strings.Replace(sMasterOmlFileName, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
 	return sMasterOmlFileName
 }
 
-func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile string, datasourceid string, sResultFilePath string, sMasterOmlFileName string) {
+func writeIntoOmlFile(lstOfQueries []datamodel.Query, tempOmlFile string, dataOutputFile string, datasourceid string, sResultFilePath string, sMasterOmlFileName string) {
 
 	// Output file declaration
-	var sOutputFileName = strings.Replace(dataOutputFile, common.BACK_SLASH, common.FORWARD_SLASH, -1)
+	var sOutputFileName = strings.Replace(dataOutputFile, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
 
-	var firstline = "global HWEP_RAWDATA_OUTPUTFILE;" + common.NEWLINE + "HWEP_RAWDATA_OUTPUTFILE = " +
-		common.SINGLE_QUOTE + sOutputFileName + common.SINGLE_QUOTE + common.NEWLINE + ";"
+	var firstline = "global HWEP_RAWDATA_OUTPUTFILE;" + utils.NEWLINE + "HWEP_RAWDATA_OUTPUTFILE = " +
+		utils.SINGLE_QUOTE + sOutputFileName + utils.SINGLE_QUOTE + utils.NEWLINE + ";"
 
-	var secondline = "global " + datasourceid + ";" + common.NEWLINE + datasourceid + " = " +
-		common.SINGLE_QUOTE + sResultFilePath + common.SINGLE_QUOTE + ";" + common.NEWLINE
+	var secondline = "global " + datasourceid + ";" + utils.NEWLINE + datasourceid + " = " +
+		utils.SINGLE_QUOTE + sResultFilePath + utils.SINGLE_QUOTE + ";" + utils.NEWLINE
 
-	var thirdline = "status = addpath (" + common.SINGLE_QUOTE + sMasterOmlFileName + common.SINGLE_QUOTE + ");"
+	var thirdline = "status = addpath (" + utils.SINGLE_QUOTE + sMasterOmlFileName + utils.SINGLE_QUOTE + ");"
 
-	var forthline = "run (" + common.SINGLE_QUOTE + common.PLOT_GRAPH_OML_FILE_NAME + common.SINGLE_QUOTE + ");"
+	var forthline = "run (" + utils.SINGLE_QUOTE + utils.PLOT_GRAPH_OML_FILE_NAME + utils.SINGLE_QUOTE + ");"
 
-	var fifthline = "GET_RAWDATA_HEADER();" + common.NEWLINE
+	var fifthline = "GET_RAWDATA_HEADER();" + utils.NEWLINE
 
 	plotgraphfilecontent := []string{firstline, secondline, thirdline, forthline, fifthline}
 
-	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_RESPONSE_HEADER();"+common.NEWLINE)
+	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_RESPONSE_HEADER();"+utils.NEWLINE)
 	for i := 0; i < len(lstOfQueries); i++ {
 
 		//var sResFileVarName = lstOfQueries[i].ResultDataSourceRef[0].Id
@@ -226,22 +231,22 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Type.Name == "") ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.DistantRequest.DataRequest.Name == "") ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.DistantRequest.Component.Name == "") {
-					log.Println("Query failed due to invalid data")
+					l.Log().Info("Query failed due to invalid data")
 					// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 					// 	RMFrameworkException.TYPE_QUERY_FAILED);
 				}
 
 				//Check if variable name is provided in query. If yes, use it
-				if common.IsValidString(lstOfQueries[i].VarName) {
+				if utils.IsValidString(lstOfQueries[i].VarName) {
 					sVarName = strings.TrimSpace(lstOfQueries[i].VarName)
 				} else {
-					sVarName = common.SINGLE_QUOTE + VECTOR_NAME + common.SINGLE_QUOTE
+					sVarName = utils.SINGLE_QUOTE + VECTOR_NAME + utils.SINGLE_QUOTE
 				}
 
 				arrArguements := [6]string{}
 				if lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Index >= 1 {
-					if !common.IsValidString(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Name) {
-						log.Println("Invalid data: Subcase name missing in the query")
+					if !utils.IsValidString(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Name) {
+						l.Log().Info("Invalid data: Subcase name missing in the query")
 						// throw new RMFrameworkException(RMFrameworkException.CODE_INVALID_QUERY_DATA,
 						// 				RMFrameworkException.TYPE_QUERY_FAILED);
 					}
@@ -255,28 +260,29 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 					arrCompArgs := [6]string{}
 					//arrCompArgs[0] = mapResfileIdVsPath.get(sResFileVarName);
 					arrCompArgs[0] = sResultFilePath
-					arrCompArgs[1] = common.GetPlatformIndependentFilePath(common.GetRSHome()+common.Graph_MASTER_COMPONENT_FILE_PATH, false) + common.COMP_LIST_FILE_PATH
+					arrCompArgs[1] = utils.GetPlatformIndependentFilePath(utils.GetRSHome()+
+						utils.SCRIPTS, false) + utils.COMP_LIST_FILE_PATH
 					arrCompArgs[2] = strconv.Itoa(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.Subcase.Index)
 					arrCompArgs[3] = arrArguements[2]
 					arrCompArgs[4] = arrArguements[3]
 					arrCompArgs[5] = arrArguements[4]
 
 					plotgraphfilecontent = append(plotgraphfilecontent, "[a,subcase,datatype,request,component]=doesComponentExist("+
-						common.SINGLE_QUOTE+arrCompArgs[0]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[1]+common.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[0]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[1]+utils.SINGLE_QUOTE+","+
 						arrCompArgs[2]+","+
-						common.SINGLE_QUOTE+arrCompArgs[3]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[4]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[5]+common.SINGLE_QUOTE+")"+
-						common.NEWLINE+"if (a==1)"+common.NEWLINE)
+						utils.SINGLE_QUOTE+arrCompArgs[3]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[4]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[5]+utils.SINGLE_QUOTE+")"+
+						utils.NEWLINE+"if (a==1)"+utils.NEWLINE)
 
 					plotgraphfilecontent = append(plotgraphfilecontent,
 						arrArguements[5]+" = readvector ("+
 							arrArguements[0]+","+
-							common.SINGLE_QUOTE+arrArguements[1]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[2]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[3]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[4]+common.SINGLE_QUOTE+");"+common.NEWLINE)
+							utils.SINGLE_QUOTE+arrArguements[1]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[2]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[3]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[4]+utils.SINGLE_QUOTE+");"+utils.NEWLINE)
 				} else {
 					arrArguements := [5]string{}
 					arrArguements[0] = sResFileVarName
@@ -288,28 +294,29 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 					arrCompArgs := [6]string{}
 					//arrCompArgs[0] = mapResfileIdVsPath.get(sResFileVarName);
 					arrCompArgs[0] = sResultFilePath
-					arrCompArgs[1] = common.GetPlatformIndependentFilePath(common.GetRSHome()+common.Graph_MASTER_COMPONENT_FILE_PATH, false) + common.COMP_LIST_FILE_PATH
+					arrCompArgs[1] = utils.GetPlatformIndependentFilePath(utils.GetRSHome()+
+						utils.SCRIPTS, false) + utils.COMP_LIST_FILE_PATH
 					arrCompArgs[2] = strconv.Itoa(1)
 					arrCompArgs[3] = arrArguements[1]
 					arrCompArgs[4] = arrArguements[2]
 					arrCompArgs[5] = arrArguements[3]
 
 					plotgraphfilecontent = append(plotgraphfilecontent, "[b,subcase1,datatype1,request1,component1]=doesComponentExist("+
-						common.SINGLE_QUOTE+arrCompArgs[0]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[1]+common.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[0]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[1]+utils.SINGLE_QUOTE+","+
 						arrCompArgs[2]+","+
-						common.SINGLE_QUOTE+arrCompArgs[3]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[4]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+arrCompArgs[5]+common.SINGLE_QUOTE+");"+
-						common.NEWLINE+"if (b==1)"+common.NEWLINE)
+						utils.SINGLE_QUOTE+arrCompArgs[3]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[4]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+arrCompArgs[5]+utils.SINGLE_QUOTE+");"+
+						utils.NEWLINE+"if (b==1)"+utils.NEWLINE)
 
 					plotgraphfilecontent = append(plotgraphfilecontent,
 						arrArguements[4]+" = readvector ("+
 							arrArguements[0]+","+
-							common.SINGLE_QUOTE+arrArguements[1]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[2]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[3]+common.SINGLE_QUOTE+","+
-							common.SINGLE_QUOTE+arrArguements[4]+common.SINGLE_QUOTE+");"+common.NEWLINE)
+							utils.SINGLE_QUOTE+arrArguements[1]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[2]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[3]+utils.SINGLE_QUOTE+","+
+							utils.SINGLE_QUOTE+arrArguements[4]+utils.SINGLE_QUOTE+");"+utils.NEWLINE)
 				}
 				if lstOfQueries[i].PlotResultQuery.DataQuery.SimulationFilter.Start != 0 {
 					subsetArguements := [5]string{}
@@ -324,10 +331,10 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 					}
 
 					plotgraphfilecontent = append(plotgraphfilecontent, subsetArguements[0]+" = GET_VECTOR_SUBSET ("+
-						common.SINGLE_QUOTE+subsetArguements[1]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+subsetArguements[2]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+subsetArguements[3]+common.SINGLE_QUOTE+","+
-						common.SINGLE_QUOTE+subsetArguements[4]+common.SINGLE_QUOTE+");"+common.NEWLINE)
+						utils.SINGLE_QUOTE+subsetArguements[1]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+subsetArguements[2]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+subsetArguements[3]+utils.SINGLE_QUOTE+","+
+						utils.SINGLE_QUOTE+subsetArguements[4]+utils.SINGLE_QUOTE+");"+utils.NEWLINE)
 				}
 
 				if lstOfQueries[i].PlotResultQuery.DataQuery.SimulationQuery.SimulationRangeBasedQuery.StartIndex == 0 {
@@ -335,12 +342,14 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 						getSimulationQuery(sVarName, lstOfQueries[i].PlotResultQuery.DataQuery.SimulationQuery))
 				}
 				if lstOfQueries[i].PlotResultQuery.DataQuery.IsRawDataRequired {
-					plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR("+common.SINGLE_QUOTE+"VECTOR"+common.SINGLE_QUOTE+","+
-						sVarName+");"+common.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR("+
+						utils.SINGLE_QUOTE+"VECTOR"+utils.SINGLE_QUOTE+","+
+						sVarName+");"+utils.NEWLINE)
 					if i+1 != len(lstOfQueries) {
-						plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+common.NEWLINE)
-						plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+common.NEWLINE)
-						plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+common.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+
+							utils.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+utils.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+utils.NEWLINE)
 					}
 				}
 			} else if lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.DataRequestIndex.Start != 0 {
@@ -351,7 +360,7 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.ComponentIndex.Start <= 0) ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.ComponentIndex.End <= 0) ||
 					(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.TimeStep.Index <= 0) {
-					log.Println("Query failed due to invalid data")
+					l.Log().Info("Query failed due to invalid data")
 					// LOGGER.error(sMessage);
 					// throw new RMFrameworkException(RMFrameworkException.CODE_INVALID_QUERY_DATA,
 					// 				RMFrameworkException.TYPE_QUERY_FAILED);
@@ -367,20 +376,20 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 				arrArguements[6] = strconv.Itoa(lstOfQueries[i].PlotResultQuery.DataQuery.StrcQuery.ContiguousRequest.TimeStep.Index)
 
 				plotgraphfilecontent = append(plotgraphfilecontent, "M = ReadVectors ("+
-					common.SINGLE_QUOTE+arrArguements[0]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[1]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[2]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[3]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[4]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[5]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+arrArguements[6]+common.SINGLE_QUOTE+");"+common.NEWLINE)
+					utils.SINGLE_QUOTE+arrArguements[0]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[1]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[2]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[3]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[4]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[5]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+arrArguements[6]+utils.SINGLE_QUOTE+");"+utils.NEWLINE)
 
 				if lstOfQueries[i].PlotResultQuery.DataQuery.IsRawDataRequired {
-					plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR(\"MATRIX\", M);"+common.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR(\"MATRIX\", M);"+utils.NEWLINE)
 					if i+1 != len(lstOfQueries) {
-						plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+common.NEWLINE)
-						plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+common.NEWLINE)
-						plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+common.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+utils.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+utils.NEWLINE)
+						plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+utils.NEWLINE)
 					}
 				}
 				//Check if variable name is provided in query. If yes, use it
@@ -390,16 +399,16 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 				// 	sVarName = MATRIX_NAME
 				// }
 			} else {
-				log.Println("No query found")
+				l.Log().Info("No query found")
 				// LOGGER.error(sMessage);
 				// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 				// 				RMFrameworkException.TYPE_QUERY_FAILED);
 			}
 			//getStatsInfo(strcQuery, omlFileWriter, sVarName)
 			//getSamplingInfo(strcQuery, omlFileWriter, sVarName)
-			plotgraphfilecontent = append(plotgraphfilecontent, "else"+common.NEWLINE)
-			plotgraphfilecontent = append(plotgraphfilecontent, "writeComponentError();"+common.NEWLINE)
-			plotgraphfilecontent = append(plotgraphfilecontent, "end"+common.NEWLINE)
+			plotgraphfilecontent = append(plotgraphfilecontent, "else"+utils.NEWLINE)
+			plotgraphfilecontent = append(plotgraphfilecontent, "writeComponentError();"+utils.NEWLINE)
+			plotgraphfilecontent = append(plotgraphfilecontent, "end"+utils.NEWLINE)
 		} else if lstOfQueries[i].PlotResultQuery.DataQuery.InlineQuery.Expression != "" {
 			/* if any uncached query */
 			var sExpresssion = lstOfQueries[i].PlotResultQuery.DataQuery.InlineQuery.Expression
@@ -416,13 +425,13 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 
 			sVarName = lstOfQueries[i].VarName
 
-			if common.IsValidString(sExpresssion) {
+			if utils.IsValidString(sExpresssion) {
 				var iIndex = strings.Index(sExpresssion, "=")
-				if (iIndex < 0) && common.IsValidString(sVarName) {
-					plotgraphfilecontent = append(plotgraphfilecontent, sVarName+" = "+sExpresssion+common.NEWLINE)
+				if (iIndex < 0) && utils.IsValidString(sVarName) {
+					plotgraphfilecontent = append(plotgraphfilecontent, sVarName+" = "+sExpresssion+utils.NEWLINE)
 				} else {
 					sVarName = sExpresssion[0:iIndex]
-					plotgraphfilecontent = append(plotgraphfilecontent, sExpresssion+common.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, sExpresssion+utils.NEWLINE)
 				}
 			}
 			if lstOfQueries[i].PlotResultQuery.DataQuery.SimulationFilter.Start != 0 {
@@ -438,29 +447,29 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 				}
 
 				plotgraphfilecontent = append(plotgraphfilecontent, subsetArguements[0]+" = GET_VECTOR_SUBSET ("+
-					common.SINGLE_QUOTE+subsetArguements[1]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+subsetArguements[2]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+subsetArguements[3]+common.SINGLE_QUOTE+","+
-					common.SINGLE_QUOTE+subsetArguements[4]+common.SINGLE_QUOTE+");"+
-					common.NEWLINE)
+					utils.SINGLE_QUOTE+subsetArguements[1]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+subsetArguements[2]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+subsetArguements[3]+utils.SINGLE_QUOTE+","+
+					utils.SINGLE_QUOTE+subsetArguements[4]+utils.SINGLE_QUOTE+");"+
+					utils.NEWLINE)
 			}
 			if lstOfQueries[i].PlotResultQuery.DataQuery.IsRawDataRequired {
-				plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR(\"VECTOR\","+sVarName+");"+common.NEWLINE)
+				plotgraphfilecontent = append(plotgraphfilecontent, "HWEP_RS_OUTPUT_VAR(\"VECTOR\","+sVarName+");"+utils.NEWLINE)
 				if i+1 != len(lstOfQueries) {
-					plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+common.NEWLINE)
-					plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+common.NEWLINE)
-					plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+common.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, "fidXMLOutput = fopen(HWEP_RAWDATA_OUTPUTFILE,'a');"+utils.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, "fwrite(fidXMLOutput,',');"+utils.NEWLINE)
+					plotgraphfilecontent = append(plotgraphfilecontent, "fclose(fidXMLOutput);"+utils.NEWLINE)
 				}
 			}
 		} else {
-			log.Println("No query found")
+			l.Log().Info("No query found")
 			// LOGGER.error(sMessage);
 			// throw new RMFrameworkException(RMFrameworkException.CODE_MISSING_QUERY_DATA,
 			// 				RMFrameworkException.TYPE_QUERY_FAILED);
 		}
 	}
-	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_RESPONSE_FOOTER();"+common.NEWLINE)
-	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_FOOTER();"+common.NEWLINE)
+	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_RESPONSE_FOOTER();"+utils.NEWLINE)
+	plotgraphfilecontent = append(plotgraphfilecontent, "GET_RAWDATA_FOOTER();"+utils.NEWLINE)
 
 	file, err := os.OpenFile(tempOmlFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
@@ -479,7 +488,7 @@ func writeIntoOmlFile(lstOfQueries []Query, tempOmlFile string, dataOutputFile s
 
 }
 
-func getSimulationQuery(sVarName string, SimulationQuery simulationQuery) string {
+func getSimulationQuery(sVarName string, SimulationQuery datamodel.SimulationQuery) string {
 
 	var startIndex string
 	var endIndex string
@@ -536,17 +545,17 @@ func getSimulationQuery(sVarName string, SimulationQuery simulationQuery) string
 		subsetArguements[1] + "," +
 		subsetArguements[2] + "," +
 		subsetArguements[3] + "," +
-		subsetArguements[4] + ");" + common.NEWLINE
+		subsetArguements[4] + ");" + utils.NEWLINE
 
 }
 
-func CreatePlotResponseModel(ResultFileInformationModel resultFileInformationModel, lstPlotModel []plotRequestResponseModel,
-	sDataDirectoryPath string, newlyAddedPltBlocksCount int, token string, plotRequestCaller string) PlotRequestResModel {
+func CreatePlotResponseModel(ResultFileInformationModel datamodel.ResultFileInformationModel, lstPlotModel []datamodel.PlotRequestResponseModel,
+	sDataDirectoryPath string, newlyAddedPltBlocksCount int, token string, plotRequestCaller string) datamodel.PlotRequestResModel {
 
-	var plotRequestResModel PlotRequestResModel
+	var plotRequestResModel datamodel.PlotRequestResModel
 	plotRequestResModel.ResultFileInformationModel = ResultFileInformationModel
 
-	var plotAmChartsdata plotAmCharts
+	var plotAmChartsdata datamodel.PlotAmCharts
 	plotAmChartsdata.ChartHtmlRelativeUrl = "/ui/cm/plugins/rm/data/Chart.html"
 	plotAmChartsdata.ExportPlotDataRelativeUrl = "/resultmanagerservice/rest/rmservice/exportplotdata/"
 	plotAmChartsdata.PlotFileRelativePath = getDataDirectoryRelativePath(sDataDirectoryPath)
@@ -573,41 +582,14 @@ func CreatePlotResponseModel(ResultFileInformationModel resultFileInformationMod
 
 }
 
-func getDataDirectoryPath(servername string, username string) string {
-	var sDataDirectoryPath = getNewDirPath(servername, username)
-	if err := os.MkdirAll(sDataDirectoryPath, 0755); err != nil {
-		log.Fatal(err)
-	}
-
-	return sDataDirectoryPath
-}
-
-func getNewDirPath(sServerName string, username string) string {
-	var sUniqueDirPath string = ""
-	sUniqueDirPath = GetRMDataDirectory() + username + "/" + strconv.FormatInt(common.GetUniqueRandomIntValue(), 10)
-	//log.Fatal("Error occured while creating new directory path")
-	return sUniqueDirPath
-}
-
 func getDataDirectoryRelativePath(sDataDirectoryPath string) string {
-	return sDataDirectoryPath[len([]rune(GetRMDataDirectory())):len(sDataDirectoryPath)]
+	return sDataDirectoryPath[len([]rune(utils.GetRMDataDirectory())):len(sDataDirectoryPath)]
 }
 
-func GetRMDataDirectory() string {
-	//return os.Getenv("PBSWORKS_HOME") + "/data/resultmanager" + "/" + DATA_DIR_NAME + "/"
+func getMergedPlotTemporaryModel(ResultFileName string, plotRequestResponseModelList []datamodel.PlotRequestResponseModel) datamodel.PlotTemporaryModel {
 
-	// var dir = common.GetRSHome() + "/data/"
-	// if err := os.Mkdir(dir, 0755); err != nil {
-	// 	log.Fatal(err)
-	// }
-	return common.GetRSHome() + "/data/"
-
-}
-
-func getMergedPlotTemporaryModel(ResultFileName string, plotRequestResponseModelList []plotRequestResponseModel) PlotTemporaryModel {
-
-	var pltModel PlotTemporaryModel
-	var lstPlotTemporaryModelList []PlotTemporaryModel
+	var pltModel datamodel.PlotTemporaryModel
+	var lstPlotTemporaryModelList []datamodel.PlotTemporaryModel
 	for i := 0; i < len(plotRequestResponseModelList); i++ {
 		if isRVPPlotQuery(plotRequestResponseModelList[i].Queries.Query[0]) {
 			pltModel = readRVPPLTModel(ResultFileName, plotRequestResponseModelList[i])
@@ -616,7 +598,7 @@ func getMergedPlotTemporaryModel(ResultFileName string, plotRequestResponseModel
 		}
 		lstPlotTemporaryModelList = append(lstPlotTemporaryModelList, pltModel)
 	}
-	var mergedPlotTemporaryModel PlotTemporaryModel
+	var mergedPlotTemporaryModel datamodel.PlotTemporaryModel
 
 	var plotTemporaryModelListSize = len(plotRequestResponseModelList)
 	/*
@@ -637,7 +619,7 @@ func getMergedPlotTemporaryModel(ResultFileName string, plotRequestResponseModel
 	return mergedPlotTemporaryModel
 }
 
-func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel) PlotTemporaryModel {
+func readNativePLTModel(resultFileName string, pltModel datamodel.PlotRequestResponseModel) datamodel.PlotTemporaryModel {
 
 	var plotMetaData = pltModel.PlotMetaData
 	// String resultFileName = getResultFileName((ResultDataSourceLocalFileCType) pltModel
@@ -651,9 +633,9 @@ func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel
 
 	var curveName string
 	//var strcQuery strcQuery
-	var plotQuery Query
+	var plotQuery datamodel.Query
 	var sLegendName string
-	var inlineQueryCTye inlineQuery
+	var inlineQueryCTye datamodel.InlineQuery
 	for index := 0; index < len(lstQueries); index++ {
 		plotQuery = lstQueries[index]
 
@@ -696,15 +678,15 @@ func readNativePLTModel(resultFileName string, pltModel plotRequestResponseModel
 		lstListCurvePoints = append(lstListCurvePoints, ds.Items)
 	}
 
-	return PlotTemporaryModel{
+	return datamodel.PlotTemporaryModel{
 		PlotMetaData:   plotMetaData,
-		lstCurveNames:  lstCurveNames,
-		lstCurvesData:  lstListCurvePoints,
-		lstLegendNames: lstLegendNames,
+		LstCurveNames:  lstCurveNames,
+		LstCurvesData:  lstListCurvePoints,
+		LstLegendNames: lstLegendNames,
 	}
 }
 
-func createResposes(response responses, lstQueryCType []Query, sSessionId string) responses {
+func createResposes(response datamodel.Responses, lstQueryCType []datamodel.Query, sSessionId string) datamodel.Responses {
 	if len(response.Responselist) > 0 {
 
 		for i := 0; i < len(response.Responselist); i++ {
@@ -734,17 +716,18 @@ func createResposes(response responses, lstQueryCType []Query, sSessionId string
 
 }
 
-func buildPlotAMChartsModel(mergedPlotTemporaryModel PlotTemporaryModel, sDataDirectoryPath string, PlotAmCharts plotAmCharts) plotAmCharts {
+func buildPlotAMChartsModel(mergedPlotTemporaryModel datamodel.PlotTemporaryModel, sDataDirectoryPath string,
+	PlotAmCharts datamodel.PlotAmCharts) datamodel.PlotAmCharts {
 
-	var plotAmChartsdata plotAmCharts
+	var plotAmChartsdata datamodel.PlotAmCharts
 	var plotMetaData = mergedPlotTemporaryModel.PlotMetaData.TitleMetaData
-	var lstMergedCurvePoints = mergedPlotTemporaryModel.lstCurvesData
-	var lstMergedCurveNames = mergedPlotTemporaryModel.lstCurveNames
+	var lstMergedCurvePoints = mergedPlotTemporaryModel.LstCurvesData
+	var lstMergedCurveNames = mergedPlotTemporaryModel.LstCurveNames
 	createAMChartFiles(plotMetaData, sDataDirectoryPath, lstMergedCurvePoints, lstMergedCurveNames)
 	plotAmChartsdata.ExportPlotDataRelativeUrl = PlotAmCharts.ExportPlotDataRelativeUrl + sDataDirectoryPath +
 		ORIGINAL_PLOT_DATA_CSV_FILE_NAME
 	plotAmChartsdata.PlotFileRelativePath = PlotAmCharts.PlotFileRelativePath + PLOT_DATA_CSV_FILE_NAME
-	var plotDataModelData plotDataModel
+	var plotDataModelData datamodel.PlotDataModel
 	plotDataModelData.CurveNames = lstMergedCurveNames
 	plotDataModelData.NumberOfCurvePoints = getNumberOfDataPoints()
 	plotDataModelData.DataPoints = getDataPoints(false, false)
@@ -753,20 +736,20 @@ func buildPlotAMChartsModel(mergedPlotTemporaryModel PlotTemporaryModel, sDataDi
 	plotDataModelData.LogXlogYdataPoints = getDataPointsLogYandLogX()
 	plotDataModelData.XaxisNegative = doesXCurveContainsNegativeValues()
 	plotDataModelData.YaxisNegative = doesYCurveContainsNegativeValues()
-	plotDataModelData.LegendNames = mergedPlotTemporaryModel.lstLegendNames
+	plotDataModelData.LegendNames = mergedPlotTemporaryModel.LstLegendNames
 	plotAmChartsdata.PlotDataModel = plotDataModelData
 
 	return plotAmChartsdata
 }
 
-func createAMChartFiles(plotMetaData titleMetaData, sDataDirectoryPath string, lstMergedCurvePoints [][]float64,
+func createAMChartFiles(plotMetaData datamodel.TitleMetaData, sDataDirectoryPath string, lstMergedCurvePoints [][]float64,
 	lstMergedCurveNames []string) {
 	createCSVDataFiles(sDataDirectoryPath, lstMergedCurvePoints,
 		plotMetaData.XaxisTitle, plotMetaData.YaxisTitle, lstMergedCurveNames,
 		plotPointValueDecimalPrecision)
 }
 
-func createTemporaryPLTFile(sDataDirectoryPath string, lstPlotModel []plotRequestResponseModel) string {
+func createTemporaryPLTFile(sDataDirectoryPath string, lstPlotModel []datamodel.PlotRequestResponseModel) string {
 	_, err := os.Create(sDataDirectoryPath + "/" + TEMPORARY_PLT_FILE_NAME)
 
 	if err != nil {
@@ -777,10 +760,10 @@ func createTemporaryPLTFile(sDataDirectoryPath string, lstPlotModel []plotReques
 	return sDataDirectoryPath + "/" + TEMPORARY_PLT_FILE_NAME
 }
 
-func GetUserPlotPreferences() userPreferece {
-	var UserPreferece userPreferece
+func GetUserPlotPreferences() datamodel.UserPreferece {
+	var UserPreferece datamodel.UserPreferece
 
-	UserPreferece.UserPrefereces = append(UserPreferece.UserPrefereces, userPrefereces{
+	UserPreferece.UserPrefereces = append(UserPreferece.UserPrefereces, datamodel.UserPrefereces{
 		Name:               "user_preferences",
 		CurveDatapointSize: USER_DATA_POINT_SIZE,
 		CurveLineThickness: USER_LINE_THICKNESS,
@@ -791,8 +774,8 @@ func GetUserPlotPreferences() userPreferece {
 	return UserPreferece
 }
 
-func GetWLMFileList(fileInformationModel resultFileInformationModel, sToken string,
-	fileDir string, templateFile resultFileInformationModel) []resultFileInformationModel {
+func GetWLMFileList(fileInformationModel datamodel.ResultFileInformationModel, sToken string,
+	fileDir string, templateFile datamodel.ResultFileInformationModel) []datamodel.ResultFileInformationModel {
 
 	var builFileListURL = buildGetWLMFileListURL(fileInformationModel, sToken, templateFile)
 	var postData = buildPostDataFileList(fileInformationModel, templateFile)
@@ -817,12 +800,12 @@ func GetWLMFileList(fileInformationModel resultFileInformationModel, sToken stri
 	}
 
 	json.Unmarshal([]byte(body), &matchingFileList)
-	var listFileInfoModel []resultFileInformationModel
+	var listFileInfoModel []datamodel.ResultFileInformationModel
 	if len(matchingFileList.Data.Files) != 0 {
 
 		for i := 0; i < len(matchingFileList.Data.Files); i++ {
 
-			listFileInfoModel = append(listFileInfoModel, resultFileInformationModel{
+			listFileInfoModel = append(listFileInfoModel, datamodel.ResultFileInformationModel{
 				FileName:   matchingFileList.Data.Files[i].Filename,
 				FilePath:   matchingFileList.Data.Files[i].AbsPath,
 				SeriesFile: false,
@@ -839,23 +822,23 @@ func GetWLMFileList(fileInformationModel resultFileInformationModel, sToken stri
 
 }
 
-func buildGetWLMFileListURL(fileInformationModel resultFileInformationModel, sToken string,
-	templateFile resultFileInformationModel) string {
+func buildGetWLMFileListURL(fileInformationModel datamodel.ResultFileInformationModel, sToken string,
+	templateFile datamodel.ResultFileInformationModel) string {
 
 	var fileListUrl = fileInformationModel.PasUrl
 
 	var access_token = "access_token=" + strings.Replace(sToken, "Bearer", "", -1)
 	common.GetWLMDetails(access_token, templateFile.ServerName, templateFile.PasUrl)
-	if fileInformationModel.JobState == "R" && strings.Contains(fileListUrl, common.PAS_URL_VALUE) {
-		fileListUrl = strings.Replace(fileListUrl, common.PAS_URL_VALUE, common.JOB_OPERATION, -1)
+	if fileInformationModel.JobState == "R" && strings.Contains(fileListUrl, utils.PAS_URL_VALUE) {
+		fileListUrl = strings.Replace(fileListUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		fileListUrl = fileListUrl + common.REST_SERVICE_URL
+		fileListUrl = fileListUrl + utils.REST_SERVICE_URL
 	}
 	fileListUrl = fileListUrl + "/files/list"
 	return fileListUrl
 }
 
-func buildPostDataFileList(fileInformationModel resultFileInformationModel, templateFile resultFileInformationModel) string {
+func buildPostDataFileList(fileInformationModel datamodel.ResultFileInformationModel, templateFile datamodel.ResultFileInformationModel) string {
 
 	var jobId = getJobId(templateFile)
 	if jobId == "" {
@@ -878,25 +861,25 @@ func buildPostDataFileList(fileInformationModel resultFileInformationModel, temp
 	return postData
 }
 
-func getJobId(fileModel resultFileInformationModel) string {
+func getJobId(fileModel datamodel.ResultFileInformationModel) string {
 	var sJobId = ""
 
-	if common.JOB_RUNNING_STATE == fileModel.JobState {
+	if utils.JOB_RUNNING_STATE == fileModel.JobState {
 		sJobId = fileModel.JobId
 	} else {
-		log.Println("Job is not in running state, no need of job id")
+		l.Log().Info("Job is not in running state, no need of job id")
 	}
 	return sJobId
 }
 
-func buildPlotQueries(cmPlotRequestResponseModel PlotRequestResModel, sToken string, indexValue int64) queries {
+func buildPlotQueries(cmPlotRequestResponseModel datamodel.PlotRequestResModel, sToken string, indexValue int64) datamodel.Queries {
 	var ResultDataSource = buildResultFileDataSource(cmPlotRequestResponseModel, sToken, indexValue)
 	var updatedqueries = attachDatasourcesToQueries(cmPlotRequestResponseModel.PlotRequestResponseModel.Queries, ResultDataSource)
 	cmPlotRequestResponseModel.PlotRequestResponseModel.Queries = updatedqueries
 	return updatedqueries
 }
 
-func buildResultFileDataSource(cmPlotRequestResponseModel PlotRequestResModel, sToken string, indexValue int64) datamodel.ResourceDataSource {
+func buildResultFileDataSource(cmPlotRequestResponseModel datamodel.PlotRequestResModel, sToken string, indexValue int64) datamodel.ResourceDataSource {
 
 	var filepath = cmPlotRequestResponseModel.ResultFileInformationModel.FilePath
 	var isSeriesFile = cmPlotRequestResponseModel.ResultFileInformationModel.SeriesFile
@@ -914,13 +897,13 @@ func buildResultFileDataSource(cmPlotRequestResponseModel PlotRequestResModel, s
 	return ResultDataSource
 
 }
-func attachDatasourcesToQueries(PlotQueries queries, ResultDataSource datamodel.ResourceDataSource) queries {
+func attachDatasourcesToQueries(PlotQueries datamodel.Queries, ResultDataSource datamodel.ResourceDataSource) datamodel.Queries {
 
 	PlotQueries.ResultDataSource = nil
 	PlotQueries.ResultDataSource = append(PlotQueries.ResultDataSource, ResultDataSource)
 	for i := 0; i < len(PlotQueries.Query); i++ {
 		PlotQueries.Query[i].ResultDataSourceRef = nil
-		var ResultDataSourceRef resultDataSourceRef
+		var ResultDataSourceRef datamodel.ResultDataSourceRef
 		ResultDataSourceRef.Id = ResultDataSource.Id
 		PlotQueries.Query[i].ResultDataSourceRef = append(PlotQueries.Query[i].ResultDataSourceRef, ResultDataSourceRef)
 
@@ -930,8 +913,8 @@ func attachDatasourcesToQueries(PlotQueries queries, ResultDataSource datamodel.
 
 }
 
-func mergeCurveNamesAndPoints(originalPLTModel PlotTemporaryModel,
-	overlaidPLTModel PlotTemporaryModel) PlotTemporaryModel {
+func mergeCurveNamesAndPoints(originalPLTModel datamodel.PlotTemporaryModel,
+	overlaidPLTModel datamodel.PlotTemporaryModel) datamodel.PlotTemporaryModel {
 
 	var lstMergedCurveNames []string
 	var lstLegendNames []string
@@ -941,39 +924,40 @@ func mergeCurveNamesAndPoints(originalPLTModel PlotTemporaryModel,
 	 * original plt has more points on X Axis choose original plt for X
 	 * Axis
 	 */
-	if len(originalPLTModel.lstCurvesData[0]) >= len(overlaidPLTModel.lstCurvesData[0]) {
-		lstMergedCurvePoints = append(lstMergedCurvePoints, originalPLTModel.lstCurvesData[0])
+	if len(originalPLTModel.LstCurvesData[0]) >= len(overlaidPLTModel.LstCurvesData[0]) {
+		lstMergedCurvePoints = append(lstMergedCurvePoints, originalPLTModel.LstCurvesData[0])
 	} else {
-		lstMergedCurvePoints = append(lstMergedCurvePoints, overlaidPLTModel.lstCurvesData[0])
+		lstMergedCurvePoints = append(lstMergedCurvePoints, overlaidPLTModel.LstCurvesData[0])
 	}
-	for i := 1; i < len(originalPLTModel.lstCurvesData); i++ {
-		lstMergedCurvePoints = append(lstMergedCurvePoints, originalPLTModel.lstCurvesData[i])
+	for i := 1; i < len(originalPLTModel.LstCurvesData); i++ {
+		lstMergedCurvePoints = append(lstMergedCurvePoints, originalPLTModel.LstCurvesData[i])
 	}
-	for i := 1; i < len(overlaidPLTModel.lstCurvesData); i++ {
-		lstMergedCurvePoints = append(lstMergedCurvePoints, overlaidPLTModel.lstCurvesData[i])
+	for i := 1; i < len(overlaidPLTModel.LstCurvesData); i++ {
+		lstMergedCurvePoints = append(lstMergedCurvePoints, overlaidPLTModel.LstCurvesData[i])
 	}
 
-	lstMergedCurveNames = append(lstMergedCurveNames, originalPLTModel.lstCurveNames...)
-	lstMergedCurveNames = append(lstMergedCurveNames, overlaidPLTModel.lstCurveNames...)
-	lstLegendNames = append(lstLegendNames, originalPLTModel.lstLegendNames...)
-	lstLegendNames = append(lstLegendNames, overlaidPLTModel.lstLegendNames...)
+	lstMergedCurveNames = append(lstMergedCurveNames, originalPLTModel.LstCurveNames...)
+	lstMergedCurveNames = append(lstMergedCurveNames, overlaidPLTModel.LstCurveNames...)
+	lstLegendNames = append(lstLegendNames, originalPLTModel.LstLegendNames...)
+	lstLegendNames = append(lstLegendNames, overlaidPLTModel.LstLegendNames...)
 
-	return PlotTemporaryModel{
-		lstCurveNames:  lstMergedCurveNames,
-		lstCurvesData:  lstMergedCurvePoints,
-		lstLegendNames: lstLegendNames,
+	return datamodel.PlotTemporaryModel{
+		LstCurveNames:  lstMergedCurveNames,
+		LstCurvesData:  lstMergedCurvePoints,
+		LstLegendNames: lstLegendNames,
 	}
 
 }
 
-func getRVPPlot(plotQueries queries, ResultFileInformationModel resultFileInformationModel, username string, password string) Res {
-	var tempQueries queries
+func getRVPPlot(plotQueries datamodel.Queries, ResultFileInformationModel datamodel.ResultFileInformationModel,
+	username string, password string) datamodel.Res {
+	var tempQueries datamodel.Queries
 	for i := 0; i < len(plotQueries.ResultDataSource); i++ {
 		tempQueries.ResultDataSource = append(tempQueries.ResultDataSource, plotQueries.ResultDataSource[i])
 	}
 	tempQueries.Query = append(tempQueries.Query, plotQueries.Query[0])
 
-	var lstRVPQueries []Query
+	var lstRVPQueries []datamodel.Query
 	if len(tempQueries.Query[0].RvpPlotDataQuery.RvpPlotColumnInfo.ColumnNames) == 0 {
 		for i := 0; i < len(plotQueries.Query); i++ {
 			if isRVPQuery(plotQueries.Query[i]) {
@@ -992,11 +976,11 @@ func getRVPPlot(plotQueries queries, ResultFileInformationModel resultFileInform
 	return GetRVPPlotData(tempQueries, ResultFileInformationModel, username, password)
 }
 
-func isRVPQuery(QueryCtType Query) bool {
+func isRVPQuery(QueryCtType datamodel.Query) bool {
 	return QueryCtType.RvpPlotDataQuery.RvpPlotColumnInfo.ColumnName != ""
 }
 
-func readRVPPLTModel(resultFileName string, pltModel plotRequestResponseModel) PlotTemporaryModel {
+func readRVPPLTModel(resultFileName string, pltModel datamodel.PlotRequestResponseModel) datamodel.PlotTemporaryModel {
 	var plotMetaData = pltModel.PlotMetaData
 
 	var resultFileId = pltModel.Queries.Query[0].ResultDataSourceRef[0].Id
@@ -1008,9 +992,9 @@ func readRVPPLTModel(resultFileName string, pltModel plotRequestResponseModel) P
 
 	var curveName string
 	//var strcQuery strcQuery
-	var plotQuery Query
+	var plotQuery datamodel.Query
 	var sLegendName string
-	var inlineQueryCTye inlineQuery
+	var inlineQueryCTye datamodel.InlineQuery
 
 	for index := 0; index < len(lstQueries); index++ {
 		plotQuery = lstQueries[index]
@@ -1048,11 +1032,11 @@ func readRVPPLTModel(resultFileName string, pltModel plotRequestResponseModel) P
 		lstListCurvePoints = append(lstListCurvePoints, ds.Items)
 	}
 
-	return PlotTemporaryModel{
+	return datamodel.PlotTemporaryModel{
 		PlotMetaData:   plotMetaData,
-		lstCurveNames:  lstCurveNames,
-		lstCurvesData:  lstListCurvePoints,
-		lstLegendNames: lstLegendNames,
+		LstCurveNames:  lstCurveNames,
+		LstCurvesData:  lstListCurvePoints,
+		LstLegendNames: lstLegendNames,
 	}
 
 }

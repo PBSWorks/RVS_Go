@@ -1,10 +1,12 @@
 package common
 
 import (
+	"altair/rvs/utils"
 	"encoding/xml"
 	"io/ioutil"
-	"log"
 	"os"
+
+	l "altair/rvs/globlog"
 )
 
 var SiteConfigData SiteConfig
@@ -13,8 +15,10 @@ type SiteConfig struct {
 	XMLName           xml.Name          `xml:"SiteConfig"`
 	SiteConfig        []Products        `xml:"Products"`
 	RMServers         []PAServerURL     `xml:"RMServers"`
+	Environment       string            `xml:"Environment"`
 	RVSConfiguration  RVSConfiguration  `xml:"RVSConfiguration"`
 	SeriesResultFiles SeriesResultFiles `xml:"SeriesResultFiles"`
+	Cache             Cache             `xml:"Cache"`
 }
 
 type Products struct {
@@ -55,13 +59,30 @@ type ResultFile struct {
 	SeriesWildcardPattern string   `xml:"seriesWildcardPattern,attr"`
 }
 
+type Cache struct {
+	XMLName    xml.Name   `xml:"Cache"`
+	Enabled    string     `xml:"enabled,attr"`
+	Properties Properties `xml:"Properties"`
+}
+
+type Properties struct {
+	XMLName  xml.Name   `xml:"Properties"`
+	Property []Property `xml:"Property"`
+}
+
+type Property struct {
+	XMLName xml.Name `xml:"Property"`
+	Name    string   `xml:"name,attr"`
+	Value   string   `xml:"value,attr"`
+}
+
 func Readconfigfile() {
 
 	// Open our xmlFile
-	xmlFile, err := os.Open(GetRSHome() + Siteconfigfile)
+	xmlFile, err := os.Open(utils.GetRSHome() + "/config" + utils.Siteconfigfile)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -85,4 +106,13 @@ func GetProductInstallationLocation(productId string) string {
 		}
 	}
 	return location
+}
+
+func GetDBUrl() string {
+	for i := 0; i < len(SiteConfigData.Cache.Properties.Property); i++ {
+		if SiteConfigData.Cache.Properties.Property[i].Name == "gorm.datasource.url" {
+			return SiteConfigData.Cache.Properties.Property[i].Value
+		}
+	}
+	return ""
 }

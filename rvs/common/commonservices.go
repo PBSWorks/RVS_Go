@@ -2,6 +2,8 @@ package common
 
 import (
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"bufio"
 	"bytes"
 	"crypto/tls"
@@ -29,6 +31,10 @@ var RVPplugin datamodel.Plugin
 var RVPDataplugin datamodel.Plugin
 var SupportedFilePatternOutput *datamodel.SupportedFilePatternOutput
 var seriespatternFile *datamodel.SeriespatternFile
+
+var (
+	WlmdetailsMap = make(map[string]WLMDetail)
+)
 
 type WLMDetail struct {
 	ServerName     string `json:"serverName"`
@@ -80,8 +86,8 @@ type files struct {
 }
 
 func GetWLMDetails(cookies string, wlmName string, pasUrl string) {
-	if !IsValidString(wlmName) {
-		log.Println("WLM Name is empty wlmName=" + wlmName)
+	if !utils.IsValidString(wlmName) {
+		l.Log().Info("WLM Name is empty wlmName=" + wlmName)
 	}
 	wlmName = strings.TrimSpace(wlmName)
 	fecthAllWLM(cookies, wlmName, pasUrl)
@@ -160,12 +166,12 @@ func DownloadFileWLM(pasUrl string, jobstate string, jobId string, filepath stri
 
 func buildFileDownloadURL(fileDownloadUrl string, jobstate string, jobId string, filepath string) string {
 
-	if jobstate == "R" && strings.Contains(fileDownloadUrl, PAS_URL_VALUE) {
-		fileDownloadUrl = strings.Replace(fileDownloadUrl, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if jobstate == "R" && strings.Contains(fileDownloadUrl, utils.PAS_URL_VALUE) {
+		fileDownloadUrl = strings.Replace(fileDownloadUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 		fileDownloadUrl = fileDownloadUrl + "/files/download?serversidefilepath=" + filepath
 	} else {
 		var encodedpath = url.QueryEscape(filepath)
-		fileDownloadUrl = fileDownloadUrl + REST_SERVICE_URL + "/files/download?serversidefilepath=" + encodedpath
+		fileDownloadUrl = fileDownloadUrl + utils.REST_SERVICE_URL + "/files/download?serversidefilepath=" + encodedpath
 	}
 
 	if jobId != "" {
@@ -207,10 +213,10 @@ func DoesFileExist(pasUrl string, jobstate string, jobId string, sToken string, 
 
 func buildFileCheckURL(pasUrl string, jobstate string, sToken string) string {
 
-	if jobstate == "R" && strings.Contains(pasUrl, PAS_URL_VALUE) {
-		pasUrl = strings.Replace(pasUrl, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if jobstate == "R" && strings.Contains(pasUrl, utils.PAS_URL_VALUE) {
+		pasUrl = strings.Replace(pasUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		pasUrl = pasUrl + REST_SERVICE_URL
+		pasUrl = pasUrl + utils.REST_SERVICE_URL
 	}
 
 	pasUrl = pasUrl + "/files/file/exists"
@@ -252,17 +258,16 @@ func parseFileExists(returnedData []byte, pathtocheck string) bool {
 }
 
 func CreateFolderIfNotExist(servername string, pasUrl string, jobstate string, jobId string, sToken string, filepath string) error {
-	//var createdDirFilePath string
+
 	var jobLocation = path.Dir(filepath)
 	var folderExist = DoesFileExist(pasUrl, jobstate, jobId, sToken, jobLocation)
 	if !folderExist {
 		var exitcode = createDirWLM(servername, pasUrl, jobstate, jobId, filepath, sToken)
 		if !(exitcode == 0) {
-			var msg = "Directory does not exists, Choose another directory"
-			return errors.New(msg)
+			return errors.New("Directory does not exists, Choose another directory")
 		}
 	}
-	return errors.New("")
+	return nil
 
 }
 
@@ -300,9 +305,9 @@ func BuildCreateDirURL(servername string, pasUrl string, jobstate string, sToken
 	var sPASURL = "https://" + WlmdetailsMap[servername].ServerName + ":" + WlmdetailsMap[servername].Serverport
 
 	if jobstate == "R" {
-		sPASURL = sPASURL + JOB_OPERATION
+		sPASURL = sPASURL + utils.JOB_OPERATION
 	} else {
-		sPASURL = sPASURL + PAS_URL_VALUE + REST_SERVICE_URL
+		sPASURL = sPASURL + utils.PAS_URL_VALUE + utils.REST_SERVICE_URL
 	}
 	sPASURL = sPASURL + "/files/dir/create"
 	return sPASURL
@@ -327,7 +332,7 @@ func UploadFileWLM(filename string, sToken string, filepath string, pasUrl strin
 	// this step is very important
 	fileWriter, err := bodyWriter.CreateFormFile("attfile", filepath)
 	if err != nil {
-		log.Println("error writing to buffer")
+		l.Log().Error("error writing to buffer")
 		return err
 	}
 
@@ -336,7 +341,7 @@ func UploadFileWLM(filename string, sToken string, filepath string, pasUrl strin
 	// open file handle
 	fh, err := os.Open(filename)
 	if err != nil {
-		log.Println("error opening file")
+		l.Log().Error("error opening file")
 		return err
 	}
 	defer fh.Close()
@@ -377,15 +382,15 @@ func buildFileUploadUrl(sToken string, filepath string, pasUrl string, jobstate 
 	var encodedpath = url.QueryEscape(filepath)
 	var sPASURL = pasUrl
 
-	if jobstate == "R" && strings.Contains(pasUrl, PAS_URL_VALUE) {
-		sPASURL = strings.Replace(pasUrl, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if jobstate == "R" && strings.Contains(pasUrl, utils.PAS_URL_VALUE) {
+		sPASURL = strings.Replace(pasUrl, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		sPASURL = sPASURL + REST_SERVICE_URL
+		sPASURL = sPASURL + utils.REST_SERVICE_URL
 	}
 
 	var baseUrl = sPASURL + "/files/upload?serversidefilepath=" + encodedpath
 
-	log.Printf("buildFileUploadUrl baseUrl: " + baseUrl)
+	l.Log().Info("buildFileUploadUrl baseUrl: " + baseUrl)
 
 	if jobId != "" {
 		baseUrl = baseUrl + "&jobid=" + jobId
@@ -512,12 +517,12 @@ func remove(s []string, r string) []string {
 
 func getPlotSupportedFiles() map[string]bool {
 
-	var plothomeDirPath = GetRSHome() + "/plugins/plot_toc_data_provider/plugin_def.xml"
+	var plothomeDirPath = utils.GetRSHome() + "/plugins/plot_toc_data_provider/plugin_def.xml"
 	// Open our xmlFile
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -540,12 +545,12 @@ func getPlotSupportedFiles() map[string]bool {
 
 func getAnimationSupportedFiles() map[string]bool {
 
-	var plothomeDirPath = GetRSHome() + "/plugins/anim_toc_data_provider/plugin_def.xml"
+	var plothomeDirPath = utils.GetRSHome() + "/plugins/anim_toc_data_provider/plugin_def.xml"
 	// Open our xmlFile
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -569,12 +574,12 @@ func getAnimationSupportedFiles() map[string]bool {
 
 func getRVPSupportedFiles() map[string]bool {
 
-	var plothomeDirPath = GetRSHome() + "/plugins/rvp_toc_data_provider/plugin_def.xml"
+	var plothomeDirPath = utils.GetRSHome() + "/plugins/rvp_toc_data_provider/plugin_def.xml"
 	// Open our xmlFile
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -587,7 +592,7 @@ func getRVPSupportedFiles() map[string]bool {
 	// we unmarshal our byteArray which contains our
 	// xmlFiles content into 'users' which we defined above
 	xml.Unmarshal(byteValue, &RVPplugin)
-	RvpFilesModel = ReadSupportedFilesElement(RVPplugin.DataProvider.SupportedFiles)
+	utils.RvpFilesModel = ReadSupportedFilesElement(RVPplugin.DataProvider.SupportedFiles)
 
 	var rvpMap = make(map[string]bool)
 	for i := 0; i < len(RVPplugin.DataProvider.SupportedFiles.File); i++ {
@@ -700,12 +705,12 @@ func parseComments(comments datamodel.Comments) datamodel.CommentsParserModel {
 
 func getRVPDataSupportedFiles() map[string]bool {
 
-	var plothomeDirPath = GetRSHome() + "/plugins/rvp_plot_data_provider/plugin_def.xml"
+	var plothomeDirPath = utils.GetRSHome() + "/plugins/rvp_plot_data_provider/plugin_def.xml"
 	// Open our xmlFile
 	xmlFile, err := os.Open(plothomeDirPath)
 	// // if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 
 	// defer the closing of our xmlFile so that we can parse it later on
@@ -745,7 +750,7 @@ func GetHWComposeConfigDetails() string {
 func isHWInstalledandConfigured() (bool, error) {
 	var isHwInstalledAndConfigured = false
 
-	var HWInstalledDirPath = GetProductInstallationLocation(HYPERWORKS_PRODUCT_ID)
+	var HWInstalledDirPath = GetProductInstallationLocation(utils.HYPERWORKS_PRODUCT_ID)
 
 	if HWInstalledDirPath == "" {
 		isHwInstalledAndConfigured = false
@@ -769,7 +774,7 @@ func isHWInstalledandConfigured() (bool, error) {
 func isComposeInstalledandConfigured() bool {
 	var isComposeInstalledAndConfigured = false
 
-	var ComposeInstalledDirPath = GetProductInstallationLocation(COMPOSE_PRODUCT_ID)
+	var ComposeInstalledDirPath = GetProductInstallationLocation(utils.COMPOSE_PRODUCT_ID)
 
 	if ComposeInstalledDirPath == "" {
 		isComposeInstalledAndConfigured = false
@@ -798,9 +803,9 @@ func GetSupportedSeriesFilePatterns(sToken string) string {
 
 		seriespatternFile.ListSupportedRvsSeriesFilePattern = append(seriespatternFile.ListSupportedRvsSeriesFilePattern,
 			datamodel.SeriesPattern{SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern})
-		SeriesVsBaseRegEx[SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern] =
+		utils.SeriesVsBaseRegEx[SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern] =
 			SiteConfigData.SeriesResultFiles.ResultFile[i].BasenamePattern
-		SeriesRegexVsWildcard[SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern] =
+		utils.SeriesRegexVsWildcard[SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesPattern] =
 			SiteConfigData.SeriesResultFiles.ResultFile[i].SeriesWildcardPattern
 	}
 
@@ -836,17 +841,20 @@ func GetLastModificationTime(JobState string, JobId string, sPASURL string, File
 
 	var LastMoifiedoutput lastMoifiedoutput
 	json.Unmarshal(body, &LastMoifiedoutput)
-	var lastModifiedTime = strconv.FormatInt(LastMoifiedoutput.Data.Files[0].Modified, 10)
+	var lastModifiedTime string
+	if len(LastMoifiedoutput.Data.Files) != 0 {
+		lastModifiedTime = strconv.FormatInt(LastMoifiedoutput.Data.Files[0].Modified, 10)
+	}
 
 	return lastModifiedTime
 }
 
 func buildFileListUrl(JobState string, JobId string, sPASURL string) string {
 
-	if JobState == "R" && strings.Contains(sPASURL, PAS_URL_VALUE) {
-		sPASURL = strings.Replace(sPASURL, PAS_URL_VALUE, JOB_OPERATION, -1)
+	if JobState == "R" && strings.Contains(sPASURL, utils.PAS_URL_VALUE) {
+		sPASURL = strings.Replace(sPASURL, utils.PAS_URL_VALUE, utils.JOB_OPERATION, -1)
 	} else {
-		sPASURL = sPASURL + REST_SERVICE_URL
+		sPASURL = sPASURL + utils.REST_SERVICE_URL
 	}
 
 	sPASURL = sPASURL + "/files/list"

@@ -2,7 +2,8 @@ package toc
 
 import (
 	"altair/rvs/common"
-	"log"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"os"
 	"time"
 )
@@ -17,51 +18,51 @@ func executeAnimationApplication(sConfigFilePath string, sResultFilePath string,
 	common.RunCommand(buildCommandArray(sConfigFilePath, sResultFilePath, sResultFilePath), username, password)
 	enddt := time.Now()
 	diff := enddt.Sub(startdt)
-	log.Println(diff)
+	l.Log().Info(diff)
 }
 
 func buildCommandArray(sConfigFilePath string, sResultFilePath string, sModelFilePath string) []string {
 	lstOfCmdItems := []string{}
 	var sExec string
-	if common.IsWindows() {
-		if common.Is32BitOS() {
-			sExec = common.GetProductInstallationLocation(common.HYPERWORKS_PRODUCT_ID) + HVTRANS_WINDOWS32_EXEC
+	if utils.IsWindows() {
+		if utils.Is32BitOS() {
+			sExec = common.GetProductInstallationLocation(utils.HYPERWORKS_PRODUCT_ID) + HVTRANS_WINDOWS32_EXEC
 		} else {
-			sExec = common.GetProductInstallationLocation(common.HYPERWORKS_PRODUCT_ID) + HVTRANS_WINDOWS64_EXEC
+			sExec = common.GetProductInstallationLocation(utils.HYPERWORKS_PRODUCT_ID) + HVTRANS_WINDOWS64_EXEC
 		}
 		/* Do not get platform independent path, Since, For AIF Impersonation the HVTrans
 		 * path should contain \ backslash (Like: C:\Altair\hw10.0\io\...) */
 		//	sExec = sExec.replace("/", "\\")
 		lstOfCmdItems = append(lstOfCmdItems, sExec)
 	} else {
-		if common.Is32BitOS() {
-			sExec = common.GetProductInstallationLocation(common.HYPERWORKS_PRODUCT_ID) + HVTRANS_UNIX_EXEC
+		if utils.Is32BitOS() {
+			sExec = common.GetProductInstallationLocation(utils.HYPERWORKS_PRODUCT_ID) + HVTRANS_UNIX_EXEC
 		} else {
-			sExec = common.GetProductInstallationLocation(common.HYPERWORKS_PRODUCT_ID) + HVTRANS_UNIX_EXEC
+			sExec = common.GetProductInstallationLocation(utils.HYPERWORKS_PRODUCT_ID) + HVTRANS_UNIX_EXEC
 		}
-		lstOfCmdItems = append(lstOfCmdItems, common.GetPlatformIndependentFilePath(sExec, true))
+		lstOfCmdItems = append(lstOfCmdItems, utils.GetPlatformIndependentFilePath(sExec, true))
 		lstOfCmdItems = append(lstOfCmdItems, "-nobg")
 	}
 
 	info, err := os.Stat(sExec)
 	if os.IsNotExist(err) {
-		log.Println(info)
-		log.Println("HVtrans Execution file does not exists.")
+		l.Log().Info(info)
+		l.Log().Info("HVtrans Execution file does not exists.")
 	}
 	configfileInfo, configerr := os.Stat(sConfigFilePath)
 	if os.IsNotExist(configerr) {
-		log.Println(configfileInfo)
-		log.Println("Config script path not found.")
+		l.Log().Info(configfileInfo)
+		l.Log().Info("Config script path not found.")
 	}
 
 	// No space between -c and config file path as per hvtrans documentation
-	if common.IsValidString(sConfigFilePath) {
-		lstOfCmdItems = append(lstOfCmdItems, "-c"+common.GetPlatformIndependentFilePath(sConfigFilePath, true))
+	if utils.IsValidString(sConfigFilePath) {
+		lstOfCmdItems = append(lstOfCmdItems, "-c"+utils.GetPlatformIndependentFilePath(sConfigFilePath, true))
 	}
 	// Result file
-	lstOfCmdItems = append(lstOfCmdItems, common.GetPlatformIndependentFilePath(sResultFilePath, true))
+	lstOfCmdItems = append(lstOfCmdItems, utils.GetPlatformIndependentFilePath(sResultFilePath, true))
 	//Model file path
-	lstOfCmdItems = append(lstOfCmdItems, common.GetPlatformIndependentFilePath(sModelFilePath, true))
+	lstOfCmdItems = append(lstOfCmdItems, utils.GetPlatformIndependentFilePath(sModelFilePath, true))
 
 	// Compression percentage
 	// if (IsValidString(sCompression) )

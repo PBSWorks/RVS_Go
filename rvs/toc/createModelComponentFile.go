@@ -1,10 +1,10 @@
 package toc
 
 import (
-	"altair/rvs/common"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -63,7 +63,7 @@ func readModelfile(modelfilepath string, modelComponentsFilePath string) {
 	jsonFile, err := os.Open(modelfilepath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -124,16 +124,16 @@ func updateModelComponentsFile(modelComponentsFilePath string) {
 	for i := 0; i < len(model.Model.Statistics); i++ {
 		arrStatVal := strings.Fields(model.Model.Statistics[i])
 		firstWord, secondWord := arrStatVal[0], arrStatVal[1]
-		if strings.Contains(firstWord, common.NODES) {
+		if strings.Contains(firstWord, utils.NODES) {
 			nodes, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfNodes = nodes
-		} else if strings.Contains(firstWord, common.ELEMENTS) {
+		} else if strings.Contains(firstWord, utils.ELEMENTS) {
 			elements, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfElements = elements
-		} else if strings.Contains(firstWord, common.SYSTEMS) {
+		} else if strings.Contains(firstWord, utils.SYSTEMS) {
 			systems, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfSystems = systems
-		} else if strings.Contains(firstWord, common.PARTS) {
+		} else if strings.Contains(firstWord, utils.PARTS) {
 			parts, _ := strconv.Atoi(secondWord)
 			v.Model.Statistics.NoOfParts = parts
 		}

@@ -3,6 +3,8 @@ package toc
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"bufio"
 	"fmt"
 	"io/ioutil"
@@ -11,14 +13,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-const ANIM_TOC_OUTPUT_FILE_NAME = "AnimTOC.json"
-const ANIM_TOC_CFG_PATH = "/resources/scripts/GetAnimationTOC.cfg"
-const MODEL_FILE_EXT = ".model"
-
-const ANIM_TOC_MARKER_TAG = "$#$HWE_RS_ANIM_TOC_FILE$#$"
-const MODEL_COMPS_SCRIPT_PATH_TAG = "$#$MODEL_COMPS_SCRIPT_PATH$#$"
-const TEMP_MODEL_FILE_TAG = "$#$HWE_RS_TEMP_MODEL_FILE$#$"
 
 func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile string,
 	sTOCRequest datamodel.TOCRequest, sJobId string, sJobState string, token string, pasURL string) (string, error) {
@@ -42,22 +36,22 @@ func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile s
 		}
 	}
 
-	sResultFilePath = strings.Replace(sResultFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
+	sResultFilePath = strings.Replace(sResultFilePath, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
 
-	fileAnimFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "ANIM")
-	fileAnimTOCOutput := common.AllocateFile(ANIM_TOC_OUTPUT_FILE_NAME, fileAnimFolder, username, password)
-	fileModelFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "ANIM")
-	fileModelComponents := common.AllocateFile(common.MODEL_COMPONENTS_FILE_NAME, fileModelFolder, username, password)
+	fileAnimFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_TOC_XML_FILES, "ANIM")
+	fileAnimTOCOutput := common.AllocateFile(utils.ANIM_TOC_OUTPUT_FILE_NAME, fileAnimFolder, username, password)
+	fileModelFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_TOC_XML_FILES, "ANIM")
+	fileModelComponents := common.AllocateFile(utils.MODEL_COMPONENTS_FILE_NAME, fileModelFolder, username, password)
 
 	extractAnimTOC(fileAnimTOCOutput, sResultFilePath, fileModelComponents, username, password)
 
 	aimData, err := ioutil.ReadFile(fileAnimTOCOutput) // just pass the file name
 	if err != nil {
-		log.Print(err)
+		l.Log().Error(err)
 	}
 	modelData, err := ioutil.ReadFile(fileModelComponents) // just pass the file name
 	if err != nil {
-		log.Print(err)
+		l.Log().Error(err)
 	}
 
 	animoutput := string(aimData)
@@ -67,7 +61,7 @@ func GetAnimationToc(sServerName string, sResultFilePath string, sIsSeriesFile s
 
 	var output = "{" + animoutput + "," + modeloutput + "," + json_string + "}"
 
-	res, err := common.PrettyString(output)
+	res, err := utils.PrettyString(output)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +78,7 @@ func buildAnimTOCRequestForResult(sServerName string, sResultFilePath string, sI
 	pasServerJobModel.ServerName = sServerName
 	pasServerJobModel.PasURL = pasURL
 
-	var index = common.GetUniqueRandomIntValue()
+	var index = utils.GetUniqueRandomIntValue()
 	var isSeriesFile, _ = strconv.ParseBool(sIsSeriesFile)
 	return buildAnimResultFileDataSource(token, index, sResultFilePath, isSeriesFile, sServerName, pasServerJobModel)
 
@@ -98,14 +92,14 @@ func buildAnimResultFileDataSource(sToken string, index int64, filepath string, 
 
 func extractAnimTOC(sOutputFile string, sResultFilePath string, fileModelComponents string, username string, password string) {
 
-	sCfgFile := common.GetRSHome() + ANIM_TOC_CFG_PATH
+	sCfgFile := utils.GetRSHome() + utils.SCRIPTS + utils.ANIM_TOC_CFG_PATH
 
-	tempCfgFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_SCRIPT_FILES, "ANIM")
-	tempCfgFile := common.AllocateFile(common.GetFileNameWithoutExtension(sOutputFile)+".cfg", tempCfgFolder, username, password)
+	tempCfgFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_SCRIPT_FILES, "ANIM")
+	tempCfgFile := common.AllocateFile(utils.GetFileNameWithoutExtension(sOutputFile)+".cfg", tempCfgFolder, username, password)
 
-	sModelCompsFilePath := common.GetRSHome() + common.MODEL_COMP_SOURCE_PATH
+	sModelCompsFilePath := utils.GetRSHome() + utils.SCRIPTS + utils.MODEL_COMP_SOURCE_FILE_NAME
 	sTocOutputFile := strings.Replace(sOutputFile, "\\", "/", -1)
-	sTempModelFilePath := sTocOutputFile + MODEL_FILE_EXT
+	sTempModelFilePath := sTocOutputFile + utils.MODEL_FILE_EXT
 	sModelCompsFilePath = strings.Replace(sModelCompsFilePath, "\\", "/", -1)
 
 	readAndWriteToFile(sCfgFile, tempCfgFile, sTocOutputFile, sModelCompsFilePath, sTempModelFilePath)
@@ -133,22 +127,22 @@ func readAndWriteToFile(sCfgFile string, tempCfgFile string, sTocOutputFile stri
 
 		sLine := scanner.Text()
 
-		if strings.Contains(sLine, ANIM_TOC_MARKER_TAG) {
-			iTagIndex := strings.Index(sLine, ANIM_TOC_MARKER_TAG)
+		if strings.Contains(sLine, utils.ANIM_TOC_MARKER_TAG) {
+			iTagIndex := strings.Index(sLine, utils.ANIM_TOC_MARKER_TAG)
 			fmt.Fprintf(tempfile, sLine[0:iTagIndex])
 			fmt.Fprintf(tempfile, sTocOutputFile)
-			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(ANIM_TOC_MARKER_TAG)])+"\n")
+			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(utils.ANIM_TOC_MARKER_TAG)])+"\n")
 
-		} else if strings.Contains(sLine, MODEL_COMPS_SCRIPT_PATH_TAG) {
-			iTagIndex := strings.Index(sLine, MODEL_COMPS_SCRIPT_PATH_TAG)
+		} else if strings.Contains(sLine, utils.MODEL_COMPS_SCRIPT_PATH_TAG) {
+			iTagIndex := strings.Index(sLine, utils.MODEL_COMPS_SCRIPT_PATH_TAG)
 			fmt.Fprintf(tempfile, sLine[0:iTagIndex])
 			fmt.Fprintf(tempfile, sModelCompsFilePath)
-			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(MODEL_COMPS_SCRIPT_PATH_TAG)])+"\n")
-		} else if strings.Contains(sLine, TEMP_MODEL_FILE_TAG) {
-			iTagIndex := strings.Index(sLine, TEMP_MODEL_FILE_TAG)
+			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(utils.MODEL_COMPS_SCRIPT_PATH_TAG)])+"\n")
+		} else if strings.Contains(sLine, utils.TEMP_MODEL_FILE_TAG) {
+			iTagIndex := strings.Index(sLine, utils.TEMP_MODEL_FILE_TAG)
 			fmt.Fprintf(tempfile, sLine[0:iTagIndex])
 			fmt.Fprintf(tempfile, sTempModelFilePath)
-			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(TEMP_MODEL_FILE_TAG)])+"\n")
+			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(utils.TEMP_MODEL_FILE_TAG)])+"\n")
 		} else {
 			fmt.Fprintf(tempfile, sLine+"\n")
 

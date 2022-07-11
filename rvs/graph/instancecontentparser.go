@@ -1,11 +1,14 @@
 package graph
 
-import "encoding/json"
+import (
+	"altair/rvs/datamodel"
+	"encoding/json"
+)
 
-func ParsePLTBlock(sPLTFileContent string, WindowPositionModel windowPositionModel) []plotRequestResponseModel {
+func ParsePLTBlock(sPLTFileContent string, WindowPositionModel datamodel.WindowPositionModel) []datamodel.PlotRequestResponseModel {
 
-	var lstPlotModel []plotRequestResponseModel
-	var instances Instances
+	var lstPlotModel []datamodel.PlotRequestResponseModel
+	var instances datamodel.Instances
 
 	json.Unmarshal([]byte(sPLTFileContent), &instances)
 

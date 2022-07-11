@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SiteConfig>
+    <!--
+        This section captures different products/tools versions and
+        installation locations
+    -->
+    <Products>
+        <Product id="ALTAIR_HYPERWORKS" defaultVersion="13.0">
+            <Version id="13.0" location="/opt/hwdesktop2021.2/altair" />
+        </Product>
+		<Product id="COMPOSE" defaultVersion="2021.2">
+            <Version id="2021.2" location="/opt/compose2021.2/altair/Compose2021.2" />
+        </Product>
+    </Products>
+    <RMServers>
+	    <PAServerURL>https://localhost:4443/pbsworks/api</PAServerURL>
+    </RMServers>
+
+    <!--
+        This section captures default timeouts for
+        sesion and operation (Milliseconds).
+    -->
+    <Environment>dev</Environment>
+    
+   <!--
+        Specify the TOC max size limit in bytes. Helps to send the
+        partial TOC (Bytes)
+    -->
+    <SizeLimit toc="2097152" />
+    <!-- Specify true, to use AIF User Impersonation to launch process -->
+    <!--
+        Ideally, we should enable AIFImpersonation always. Bcoz, it's not
+        safe to run as Admin, especially when running user scripts.
+        However, for debugging purpose especially on Windows, we still
+        kept the flag to disable it. Setting up Imersonation on Windows
+        platform is tedious compared to Linux.
+    -->
+    <AIFImpersonation enabled="true" />
+    
+    <Xvfb display="11" />
+    
+    <Cache enabled="true">
+        <Properties>           
+            <Property name="gorm.datasource.url" value="postgres://pbsworks:postgres@localhost:4643/pbsworks?sslmode=disable"/>           
+        </Properties>
+        <AdminPolicy>
+        <!-- 
+        There are three kind of options available for specifying the clean up time:
+        
+        1) Daily cleanup - Following 2 arguments are required for this type separated by space:
+            i) DAILY - constant string
+            ii) time - in 24 hour format
+
+        e.g. - DAILY 01:00 - Daily at 1AM
+               DAILY 21:45 - Daily at 9:45PM
+        
+        2) Weekly cleanup - Following 3 arguments are required for this type separated by space:
+            i) WEEKLY - constant string
+            ii) day - day of the week( first 3 letters )
+            iii) time - in 24 hour format
+
+        e.g. - WEEKLY SUN 14:30 - Sunday of every week at 2:30PM
+               WEEKLY MON-FRI 1:00 - Monday to Friday of every week at 1AM
+               WEEKLY MON,WED 3:00 - Monday, Wednesday of every week at 3AM
+        
+        3) Monthly cleanup - Following 3 arguments are required for this type separated by space:
+            i) MONTHLY - constant string
+            ii) day - day of the month
+            iii) time - in 24 hour format
+
+        e.g. - MONTHLY 15 15:30 - 15th of every month at 3:30PM
+               MONTHLY 10-20 1:30 - 10 to 20th of every month at 1:30AM
+               MONTHLY 1,11,21 8:00 - 1st, 11th and 21st of every month at 8AM
+         -->
+            <CleanupTime>WEEKLY SUN 1:00</CleanupTime>
+        	<CleanupCriteria>
+        		<Criterion id="LAST_ACCESSED_TIME_BASED" noOfDays="30"
+                  class="com.altair.hwe.publish.resultsmanager.defaultimpl.LastAccessedTimeBasedCriterion"/>
+                <Criterion id="FRAMEWORK_CACHE_CLEANUP_CRITERIA" noOfDays="100"
+                  class="com.altair.hwe.publish.resultsmanager.defaultimpl.LastModifiedTimeBasedCriterion"/>
+        	</CleanupCriteria>
+        	<!-- Criteria used by framework itself to delete cached files -->
+        	<!-- 
+               	 Framework cache cleanup criteria, only supports LastModifiedTimeBasedCriterion
+               	 Files last modified date older than noofDays given here will be deleted.
+            --> 
+        	<FrameworkCacheCleanupCriteria>FRAMEWORK_CACHE_CLEANUP_CRITERIA</FrameworkCacheCleanupCriteria>
+        </AdminPolicy>
+    </Cache>
+    <!-- RVS Configuration -->
+    <RVSConfiguration>
+    	<!-- specify the data directory where RVS Core will dump temp files -->
+		<HWE_RM_DATA_LOC>/opt/go/files</HWE_RM_DATA_LOC>
+		<!-- if set to true temp files created by RVS Core will not delete -->
+    	<HWE_RM_DEBUG></HWE_RM_DEBUG>
+    </RVSConfiguration>
+    <SeriesResultFiles>
+        <ResultFile basenamePattern="^[nN]3[pP][lL][oO][tT]$" seriesPattern="^[nN]3[pP][lL][oO][tT][0-9]*$" seriesWildcardPattern="[nN]3[pP][lL][oO][tT]*" />
+        <ResultFile basenamePattern="^[dD]3[pP][lL][oO][tT]$" seriesPattern="^[dD]3[pP][lL][oO][tT][0-9]*$" seriesWildcardPattern="[dD]3[pP][lL][oO][tT]*" />
+        <!--
+            Supports both normal and compressed(.gz) format 
+        -->
+        <ResultFile basenamePattern="(.*A[0]*1|.*A[0]*1[.][gG][zZ])$" seriesPattern="(.*A[0-9]+|.*A[0-9]+[.][gG][zZ])$" seriesWildcardPattern="*A[0-9]*" />
+        <ResultFile basenamePattern=".*T[0]*1$" seriesPattern=".*T[0-9]+$" seriesWildcardPattern="*T[0-9]*" />
+        <ResultFile basenamePattern=".*[0]*1\.out$" seriesPattern=".*[0-9]+\.out$" seriesWildcardPattern="*[0-9][0-9][0-9].out" />
+        <ResultFile basenamePattern="^[oO][uU][tT][pP][uU][tT]12[pP]$" seriesPattern="^[oO][uU][tT][pP][uU][tT][0-9]+[pP]$" seriesWildcardPattern="[oO][uU][tT][pP][uU][tT][0-9][0-9][pP]" />
+        <ResultFile basenamePattern="^[dD][yY][nN][iI][aA][nN]$" seriesPattern="^[dD][yY][nN][iI][aA][nN][0-9]*$" seriesWildcardPattern="[dD][yY][nN][iI][aA][nN]*" />
+    </SeriesResultFiles>
+
+</SiteConfig>

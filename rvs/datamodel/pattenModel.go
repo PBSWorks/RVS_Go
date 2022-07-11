@@ -59,7 +59,7 @@ type Locale struct {
 
 type Comments struct {
 	XMLName xml.Name `xml:"Comments"`
-	Prefix  string   `xml:"Prefix"`
+	Prefix  string   `xml:"	"`
 }
 
 type Translator struct {

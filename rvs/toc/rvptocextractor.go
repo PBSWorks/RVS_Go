@@ -3,6 +3,7 @@ package toc
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	"altair/rvs/utils"
 	"encoding/json"
 	"path/filepath"
 	"strconv"
@@ -48,11 +49,11 @@ func GetRVPToc(fileInformationModel datamodel.FileInformationModel, sToken strin
 		}
 	}
 
-	sRVPResultFilePath = strings.Replace(sRVPResultFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
+	sRVPResultFilePath = strings.Replace(sRVPResultFilePath, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
 
 	fileExtension := filepath.Ext(sRVPResultFilePath)
 
-	var rvpFileModeldata = getRVPFileModel(fileExtension, common.RvpFilesModel)
+	var rvpFileModeldata = getRVPFileModel(fileExtension, utils.RvpFilesModel)
 
 	var rvpProcessDataModel RVPProcessDataModel
 	rvpProcessDataModel.RvpResultFilePath = sRVPResultFilePath
@@ -78,7 +79,7 @@ func buildRVPTOCRequestForResult(sServerName string, sResultFilePath string, sIs
 	pasServerJobModel.ServerName = sServerName
 	pasServerJobModel.PasURL = pasURL
 
-	var index = common.GetUniqueRandomIntValue()
+	var index = utils.GetUniqueRandomIntValue()
 	var isSeriesFile, _ = strconv.ParseBool(sIsSeriesFile)
 	return buildRVPResultFileDataSource(token, index, sResultFilePath, isSeriesFile, sServerName, pasServerJobModel)
 
@@ -105,7 +106,7 @@ func getRVPFileModel(fileExtension string, rvpFilesModel datamodel.SupportedRVPF
 func runDataExtractor(rvpGetTOCModel RVPProcessDataModel) datamodel.TOCForResultCType {
 	var tocForResult datamodel.TOCForResultCType
 
-	if strings.HasSuffix(rvpGetTOCModel.RvpFileExtension, common.RVP_FILE_EXTENSION) {
+	if strings.HasSuffix(rvpGetTOCModel.RvpFileExtension, utils.RVP_FILE_EXTENSION) {
 		tocForResult.RVPToc.RVPPlots = append(tocForResult.RVPToc.RVPPlots, RVPFileTOCExtractor(rvpGetTOCModel.RvpResultFilePath))
 
 	} else {

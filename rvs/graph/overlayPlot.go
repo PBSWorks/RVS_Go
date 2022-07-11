@@ -2,10 +2,12 @@ package graph
 
 import (
 	"altair/rvs/common"
+	"altair/rvs/datamodel"
 	"altair/rvs/exception"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,11 +15,11 @@ import (
 )
 
 type plotOverlayModel struct {
-	TemporaryPltFilePath         string                       `json:"temporaryPltFilePath"`
-	OverlaidPlotFileRemovedModel overlaidPlotFileRemovedModel `json:"overlaidPlotFileRemovedModel"`
-	OverlaidPlotFile             resultFileInformationModel   `json:"overlaidPlotFile"`
-	OriginalResultFile           resultFileInformationModel   `json:"originalResultFile"`
-	PlotSelectionModelList       plotSelectionModelList       `json:"plotSelectionModelList"`
+	TemporaryPltFilePath         string                               `json:"temporaryPltFilePath"`
+	OverlaidPlotFileRemovedModel overlaidPlotFileRemovedModel         `json:"overlaidPlotFileRemovedModel"`
+	OverlaidPlotFile             datamodel.ResultFileInformationModel `json:"overlaidPlotFile"`
+	OriginalResultFile           datamodel.ResultFileInformationModel `json:"originalResultFile"`
+	PlotSelectionModelList       plotSelectionModelList               `json:"plotSelectionModelList"`
 }
 
 type overlaidPlotFileRemovedModel struct {
@@ -27,8 +29,8 @@ type overlaidPlotFileRemovedModel struct {
 	Filepath                        string `json:"filepath"`
 }
 type plotSelectionModelList struct {
-	PlotSelectionModelList []PlotSelectionModel       `json:"plotSelectionModelList"`
-	FileInformationModel   resultFileInformationModel `json:"fileInformationModel"`
+	PlotSelectionModelList []PlotSelectionModel                 `json:"plotSelectionModelList"`
+	FileInformationModel   datamodel.ResultFileInformationModel `json:"fileInformationModel"`
 }
 
 type PlotSelectionModel struct {
@@ -38,24 +40,24 @@ type PlotSelectionModel struct {
 	FilePath        string `json:"filePath"`
 }
 
-var OverlayOriginalPlotinstance *plotinstance
-var OverlayPlotinstance *plotinstance
+var OverlayOriginalPlotinstance *datamodel.Plotinstance
+var OverlayPlotinstance *datamodel.Plotinstance
 
 func OverlayPlt(sRequestData []byte, username string, password string, sToken string) (string, error) {
 	var PlotOverlayModel plotOverlayModel
 	var newlyAddedPltBlocksCount int
 	json.Unmarshal(sRequestData, &PlotOverlayModel)
-	OverlayOriginalPlotinstance = new(plotinstance)
-	OverlayPlotinstance = new(plotinstance)
+	OverlayOriginalPlotinstance = new(datamodel.Plotinstance)
+	OverlayPlotinstance = new(datamodel.Plotinstance)
 
 	var overlaidFilePath = PlotOverlayModel.OverlaidPlotFile.FilePath
-	var overlaidPlotModelList []plotRequestResponseModel
-	var originalPlotModelList []plotRequestResponseModel
+	var overlaidPlotModelList []datamodel.PlotRequestResponseModel
+	var originalPlotModelList []datamodel.PlotRequestResponseModel
 
 	jsonFile, err := os.Open(PlotOverlayModel.TemporaryPltFilePath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -65,7 +67,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 	json.Unmarshal(byteValue, &OverlayOriginalPlotinstance)
 
 	for index := 0; index < len(OverlayOriginalPlotinstance.Instances.PLT); index++ {
-		originalPlotModelList = append(originalPlotModelList, plotRequestResponseModel{
+		originalPlotModelList = append(originalPlotModelList, datamodel.PlotRequestResponseModel{
 			Queries:             OverlayOriginalPlotinstance.Instances.PLT[index].Queries,
 			PlotMetaData:        OverlayOriginalPlotinstance.Instances.PLT[index].PlotMetaData,
 			Responses:           OverlayOriginalPlotinstance.Instances.PLT[index].Responses,
@@ -84,7 +86,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 			json.Unmarshal([]byte(sSelectedPLTContent), &OverlayPlotinstance)
 
 			for _, pltlst := range OverlayPlotinstance.Instances.PLT {
-				var PlotRequestResponseModel plotRequestResponseModel
+				var PlotRequestResponseModel datamodel.PlotRequestResponseModel
 				PlotRequestResponseModel.Queries = pltlst.Queries
 				PlotRequestResponseModel.PlotMetaData = pltlst.PlotMetaData
 				PlotRequestResponseModel.Responses = pltlst.Responses
@@ -101,12 +103,12 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 			isPLTFile = false
 		}
 		if !isPLTFile {
-			var cmPlotRequestResponseModel PlotRequestResModel
+			var cmPlotRequestResponseModel datamodel.PlotRequestResModel
 			cmPlotRequestResponseModel.ResultFileInformationModel = PlotOverlayModel.OverlaidPlotFile
-			var overlaidQueries queries
+			var overlaidQueries datamodel.Queries
 			var lstQueryCTypes = originalPlotModelList[0].Queries.Query
 			for _, quryObj := range lstQueryCTypes {
-				var obj Query
+				var obj datamodel.Query
 
 				obj.ResultDataSourceRef = append(obj.ResultDataSourceRef, quryObj.ResultDataSourceRef...)
 				obj.OutputSource = quryObj.OutputSource
@@ -120,14 +122,14 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 
 				overlaidQueries.Query = append(overlaidQueries.Query, obj)
 			}
-			var PlotRequestResponseModel plotRequestResponseModel
+			var PlotRequestResponseModel datamodel.PlotRequestResponseModel
 			PlotRequestResponseModel.Queries = overlaidQueries
 			PlotRequestResponseModel.PlotMetaData = originalPlotModelList[0].PlotMetaData
 			PlotRequestResponseModel.WindowPositionModel = originalPlotModelList[0].WindowPositionModel
 			cmPlotRequestResponseModel.PlotRequestResponseModel = PlotRequestResponseModel
-			var indexValue = common.GetUniqueRandomIntValue()
+			var indexValue = utils.GetUniqueRandomIntValue()
 			var plotQueries = buildPlotQueries(cmPlotRequestResponseModel, sToken, indexValue)
-			var responses Res
+			var responses datamodel.Res
 			if isRVPPlotQuery(plotQueries.Query[0]) {
 				responses = getRVPPlot(plotQueries, cmPlotRequestResponseModel.ResultFileInformationModel, username, password)
 			} else {
@@ -137,7 +139,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 				 */
 				var lstQueries = plotQueries.Query
 				for _, query := range lstQueries {
-					query.PlotResultQuery.DataQuery.SimulationFilter = simulationFilter{}
+					query.PlotResultQuery.DataQuery.SimulationFilter = datamodel.SimulationFilter{}
 				}
 				responses = getNativePlot(plotQueries.Query, plotQueries.ResultDataSource[0], cmPlotRequestResponseModel.ResultFileInformationModel,
 					username, password)
@@ -152,7 +154,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 				}
 			}
 
-			var lstPlotRequestResponseModels []plotRequestResponseModel
+			var lstPlotRequestResponseModels []datamodel.PlotRequestResponseModel
 			lstPlotRequestResponseModels = append(lstPlotRequestResponseModels, cmPlotRequestResponseModel.PlotRequestResponseModel)
 			setQueryCounter(originalPlotModelList[len(originalPlotModelList)-1], lstPlotRequestResponseModels)
 			originalPlotModelList = append(originalPlotModelList, cmPlotRequestResponseModel.PlotRequestResponseModel)
@@ -166,7 +168,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 
 		var startIndex = PlotOverlayModel.OverlaidPlotFileRemovedModel.OverlaidPlotPltBlocksStartIndex
 		var endIndex = PlotOverlayModel.OverlaidPlotFileRemovedModel.OverlaidPlotPltBlocksEndIndex
-		var tempPlotModelList []plotRequestResponseModel
+		var tempPlotModelList []datamodel.PlotRequestResponseModel
 		//filepath = "file="+ overlayPlotModel.getOverlaidPlotFileRemovedModel().getFilepath();
 		//action =  Action.DELETE;
 		for index := 0; index < len(originalPlotModelList); index++ {
@@ -179,7 +181,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 	}
 
 	var PlotRequestResModeloutput = CreatePlotResponseModel(PlotOverlayModel.OriginalResultFile, originalPlotModelList,
-		common.GetPlatformIndependentFilePath(filepath.Dir(PlotOverlayModel.TemporaryPltFilePath), false), newlyAddedPltBlocksCount,
+		utils.GetPlatformIndependentFilePath(filepath.Dir(PlotOverlayModel.TemporaryPltFilePath), false), newlyAddedPltBlocksCount,
 		sToken, "FROM_OVERLAY")
 
 	PlotRequestResModeloutput.PlotRequestResponseModel.PlotMetaData.UserPreferece = GetUserPlotPreferences()
@@ -196,7 +198,7 @@ func OverlayPlt(sRequestData []byte, username string, password string, sToken st
 
 }
 
-func setQueryCounter(lastModelList plotRequestResponseModel, overlaidPlotModelList []plotRequestResponseModel) {
+func setQueryCounter(lastModelList datamodel.PlotRequestResponseModel, overlaidPlotModelList []datamodel.PlotRequestResponseModel) {
 	var xCounter = getXQueryCounter(lastModelList.Queries.Query)
 	var yCounter = getYQueryCounter(lastModelList.Queries.Query)
 	for _, plotRequestResponseModel := range overlaidPlotModelList {
@@ -210,7 +212,7 @@ func setQueryCounter(lastModelList plotRequestResponseModel, overlaidPlotModelLi
 	}
 }
 
-func getXQueryCounter(lstQueryList []Query) int {
+func getXQueryCounter(lstQueryList []datamodel.Query) int {
 	var lastQueryNumber = 1
 	if len(lstQueryList) > 0 {
 		var queryModel = lstQueryList[0]
@@ -223,7 +225,7 @@ func getXQueryCounter(lstQueryList []Query) int {
 	return lastQueryNumber
 }
 
-func getYQueryCounter(lstQueryList []Query) int {
+func getYQueryCounter(lstQueryList []datamodel.Query) int {
 	var lastQueryNumber = 1
 	if len(lstQueryList) > 0 {
 		var queryModel = lstQueryList[len(lstQueryList)-1]

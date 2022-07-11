@@ -3,6 +3,8 @@ package toc
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"bufio"
 	"fmt"
 	"io/ioutil"
@@ -10,8 +12,6 @@ import (
 	"os"
 	"strings"
 )
-
-const MODEL_COMP_CFG_PATH = "/resources/scripts/GetModelComps.cfg"
 
 func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server string, pasURL string, token string,
 	username string, password string) (string, error) {
@@ -30,16 +30,17 @@ func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server 
 		}
 	}
 
-	sModelFilePath = strings.Replace(sModelFilePath, common.BACK_SLASH, common.FORWARD_SLASH, -1)
+	sModelFilePath = strings.Replace(sModelFilePath, utils.BACK_SLASH, utils.FORWARD_SLASH, -1)
 
-	fileModelFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_TOC_XML_FILES, "MODEL")
-	fileModelComponents := common.AllocateFile(common.MODEL_COMPONENTS_FILE_NAME, fileModelFolder, username, password)
+	fileModelFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_TOC_XML_FILES,
+		"MODEL")
+	fileModelComponents := common.AllocateFile(utils.MODEL_COMPONENTS_FILE_NAME, fileModelFolder, username, password)
 
 	extractModelTOC(fileModelComponents, sModelFilePath, username, password)
 
 	b, err := ioutil.ReadFile(fileModelComponents) // just pass the file name
 	if err != nil {
-		log.Print(err)
+		l.Log().Error(err)
 	}
 	output := string(b)
 
@@ -47,7 +48,7 @@ func GetModelToc(sModelFilePath string, sJobId string, sJobState string, server 
 	//remove Model close } brace
 	result = result[:len(result)-1]
 
-	res, err := common.PrettyString(result)
+	res, err := utils.PrettyString(result)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,12 +79,12 @@ func buildModelFileDataSource(sToken string, sModelFilePath string, servername s
 
 func extractModelTOC(sOutputFile string, sModelFilePath string, username string, password string) {
 
-	sCfgFile := common.GetRSHome() + MODEL_COMP_CFG_PATH
+	sCfgFile := utils.GetRSHome() + utils.SCRIPTS + utils.MODEL_COMP_CFG_FILE_NAME
 
-	tempCfgFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+common.RM_SCRIPT_FILES, "MODEL")
-	tempCfgFile := common.AllocateFile(common.GetFileNameWithoutExtension(sOutputFile)+".cfg", tempCfgFolder, username, password)
+	tempCfgFolder := common.AllocateUniqueFolder(common.SiteConfigData.RVSConfiguration.HWE_RM_DATA_LOC+utils.RM_SCRIPT_FILES, "MODEL")
+	tempCfgFile := common.AllocateFile(utils.GetFileNameWithoutExtension(sOutputFile)+".cfg", tempCfgFolder, username, password)
 
-	sModelCompsFilePath := common.GetRSHome() + common.MODEL_COMP_SOURCE_PATH
+	sModelCompsFilePath := utils.GetRSHome() + utils.SCRIPTS + utils.MODEL_COMP_SOURCE_FILE_NAME
 	sTempModelFilePath := strings.Replace(sOutputFile, "\\", "/", -1)
 	sModelCompsFilePath = strings.Replace(sModelCompsFilePath, "\\", "/", -1)
 
@@ -112,17 +113,17 @@ func readAndWriteModelToFile(sCfgFile string, tempCfgFile string, sTempModelFile
 
 		sLine := scanner.Text()
 
-		if strings.Contains(sLine, TEMP_MODEL_FILE_TAG) {
-			iTagIndex := strings.Index(sLine, TEMP_MODEL_FILE_TAG)
+		if strings.Contains(sLine, utils.TEMP_MODEL_FILE_TAG) {
+			iTagIndex := strings.Index(sLine, utils.TEMP_MODEL_FILE_TAG)
 			fmt.Fprintf(tempfile, sLine[0:iTagIndex])
 			fmt.Fprintf(tempfile, sTempModelFilePath)
-			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(TEMP_MODEL_FILE_TAG)])+"\n")
+			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(utils.TEMP_MODEL_FILE_TAG)])+"\n")
 
-		} else if strings.Contains(sLine, MODEL_COMPS_SCRIPT_PATH_TAG) {
-			iTagIndex := strings.Index(sLine, MODEL_COMPS_SCRIPT_PATH_TAG)
+		} else if strings.Contains(sLine, utils.MODEL_COMPS_SCRIPT_PATH_TAG) {
+			iTagIndex := strings.Index(sLine, utils.MODEL_COMPS_SCRIPT_PATH_TAG)
 			fmt.Fprintf(tempfile, sLine[0:iTagIndex])
 			fmt.Fprintf(tempfile, sModelCompsFilePath)
-			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(MODEL_COMPS_SCRIPT_PATH_TAG)])+"\n")
+			fmt.Fprintf(tempfile, string(sLine[iTagIndex+len(utils.MODEL_COMPS_SCRIPT_PATH_TAG)])+"\n")
 		} else {
 			fmt.Fprintf(tempfile, sLine+"\n")
 		}

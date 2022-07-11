@@ -1,8 +1,9 @@
 package toc
 
 import (
-	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
+	"altair/rvs/utils"
 	"bufio"
 	"log"
 	"os"
@@ -26,21 +27,21 @@ func RVPFileTOCExtractor(sRVPFilePath string) datamodel.RVPPlotCType {
 	for scanner.Scan() {
 		var line = strings.TrimSpace(scanner.Text())
 		//Logging RVP Version
-		if strings.HasPrefix(line, common.RVP_VERSION_SYMBOL) {
-			log.Println("Parsing RVP file with Version -> " + line)
+		if strings.HasPrefix(line, utils.RVP_VERSION_SYMBOL) {
+			l.Log().Info("Parsing RVP file with Version -> " + line)
 		}
 		/*
 		* Do not consider lines which are either empty or contains comments
 		 */
-		if !common.IsValidString(line) || strings.HasPrefix(line, common.COMMENT_STARTER) {
+		if !utils.IsValidString(line) || strings.HasPrefix(line, utils.COMMENT_STARTER) {
 			continue
 		}
 		/*
 		* Header telling plot description has begin
 		 */
-		if beginPlotCount == 0 && strings.EqualFold(common.BEGIN_PLOT, line) {
+		if beginPlotCount == 0 && strings.EqualFold(utils.BEGIN_PLOT, line) {
 			beginPlotCount++
-		} else if beginPlotCount == 4 && strings.EqualFold(common.END_PLOT, line) {
+		} else if beginPlotCount == 4 && strings.EqualFold(utils.END_PLOT, line) {
 			rvpPlot.Simulations.Count = simulationCount
 			rvpPlot.Simulations.StartIndex = 1
 
@@ -70,8 +71,8 @@ func RVPFileTOCExtractor(sRVPFilePath string) datamodel.RVPPlotCType {
 			case 3:
 				simulationCount++
 				beginPlotCount++
-				var delimiter = common.FindDelimiterByParsingPlotColumnPointsLine(line)
-				var arrCurveNames = common.BreakStringWithDelimiter(arrCurveNamesLine, delimiter)
+				var delimiter = utils.FindDelimiterByParsingPlotColumnPointsLine(line)
+				var arrCurveNames = utils.BreakStringWithDelimiter(arrCurveNamesLine, delimiter)
 				for i := 0; i < len(arrCurveNames); i++ {
 					rvpPlot.RvpPlotColumnInfo.ColumnNames = append(rvpPlot.RvpPlotColumnInfo.ColumnNames, strings.TrimSpace(arrCurveNames[i]))
 				}

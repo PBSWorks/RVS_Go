@@ -1,63 +1,21 @@
 package toc
 
 import (
+	"altair/rvs/datamodel"
+	l "altair/rvs/globlog"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
-var plot Plots
-
-type Plots struct {
-	Plot            Plot    `json:"Plot"`
-	Animation       *string `json:"Animation"`
-	Model           *string `json:"Model"`
-	RvpToc          *string `json:"rvpToc"`
-	SupportedPPType string  `json:"SupportedPPType"`
-	Custom          *string `json:"Custom"`
-}
-
-type Plot struct {
-	Subcase []Subcase `json:"Subcase"`
-}
-
-type Subcase struct {
-	Index       int         `json:"index"`
-	Name        string      `json:"name"`
-	Simulations Simulations `json:"Simulations"`
-	Type        []Type      `json:"Type"`
-}
-type Simulations struct {
-	Count      int `json:"count"`
-	IndexStart int `json:"indexStart"`
-}
-
-type Type struct {
-	Index             int              `json:"index"`
-	Name              string           `json:"name"`
-	IsRequestFiltered bool             `json:"isRequestFiltered"`
-	RequestsOverview  RequestsOverview `json:"RequestsOverview"`
-	Component         []Component      `json:"Component"`
-}
-
-type RequestsOverview struct {
-	StartReqName string `json:"startReqName"`
-	EndReqName   string `json:"endReqName"`
-	NoOfRequests int    `json:"noOfRequests"`
-}
-
-type Component struct {
-	Index int    `json:"index"`
-	Name  string `json:"name"`
-}
+var plot *datamodel.Plots
 
 func readTOCAndWriteFilterTOC(plottocfile string) string {
 
 	jsonFile, err := os.Open(plottocfile)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		log.Println(err)
+		l.Log().Error(err)
 	}
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()

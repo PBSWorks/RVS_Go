@@ -3,6 +3,7 @@ package toc
 import (
 	"altair/rvs/common"
 	"altair/rvs/datamodel"
+	"altair/rvs/utils"
 	"bufio"
 	"log"
 	"os"
@@ -28,7 +29,7 @@ func GenericFileTOCExtractor(rvpProcessDataModel RVPProcessDataModel) datamodel.
 	var rvpPlot datamodel.RVPPlotCType
 	var columnNameBuilder string
 
-	rvpPlot.RvpPlotColumnInfo.PlotName = common.UNTITLED_PLOT_NAME
+	rvpPlot.RvpPlotColumnInfo.PlotName = utils.UNTITLED_PLOT_NAME
 	for scanner.Scan() {
 
 		var line = strings.TrimSpace(scanner.Text())
@@ -36,16 +37,16 @@ func GenericFileTOCExtractor(rvpProcessDataModel RVPProcessDataModel) datamodel.
 		/*
 		* Do not consider lines which are empty
 		 */
-		if !common.IsValidString(line) {
+		if !utils.IsValidString(line) {
 			continue
-		} else if common.IsCommentLine(line, commentPrefix) {
+		} else if utils.IsCommentLine(line, commentPrefix) {
 			continue
 		} else {
 			if foundColumnNamesLine {
 				simulationCount++
-			} else if common.IsValidString(columnNamesLinePrefix) {
-				if common.DoesLineContainPrefix(line, columnNamesLinePrefix) {
-					line = common.RemovePrefixFromLine(line, columnNamesLinePrefix)
+			} else if utils.IsValidString(columnNamesLinePrefix) {
+				if utils.DoesLineContainPrefix(line, columnNamesLinePrefix) {
+					line = utils.RemovePrefixFromLine(line, columnNamesLinePrefix)
 					columnNameBuilder = columnNameBuilder + line
 				} else {
 					foundColumnNamesLine = true
@@ -73,6 +74,6 @@ func GenericFileTOCExtractor(rvpProcessDataModel RVPProcessDataModel) datamodel.
 }
 
 func populateColumnNames(line string, delimiter string, rvpPlot datamodel.RVPPlotCType) []string {
-	var arrCurveNames = common.BreakStringWithDelimiter(line, delimiter)
+	var arrCurveNames = utils.BreakStringWithDelimiter(line, delimiter)
 	return arrCurveNames
 }

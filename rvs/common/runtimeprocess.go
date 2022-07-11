@@ -1,9 +1,11 @@
 package common
 
 import (
-	"log"
+	"altair/rvs/utils"
 	"os/exec"
 	"time"
+
+	l "altair/rvs/globlog"
 )
 
 var isAIFImpersonationEnabled bool = true
@@ -22,7 +24,7 @@ func RunCommand(sArrCmd []string, username string, password string) int {
 func runCommandWithAIFImpersonation(sArrCmd []string, username string, password string, bNeedXvfb bool) int {
 
 	if len(sArrCmd) <= 0 {
-		log.Println("Recieved command is empty")
+		l.Log().Info("Recieved command is empty")
 		return -1
 	}
 
@@ -40,11 +42,11 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 	//sArrEnvironment = append(sArrEnvironment, "ALTAIR_LICENSE_PATH="+getLicensePath())
 
 	var runnerexecpath = ""
-	if IsWindows() {
-		if Is32BitOS() {
-			runnerexecpath = GetRSHome() + "/bin/win32/ProcessRunner.exe"
+	if utils.IsWindows() {
+		if utils.Is32BitOS() {
+			runnerexecpath = utils.GetRSHome() + "/bin/win32/ProcessRunner.exe"
 		} else {
-			runnerexecpath = GetRSHome() + "/bin/win64/ProcessRunner.exe"
+			runnerexecpath = utils.GetRSHome() + "/bin/win64/ProcessRunner.exe"
 		}
 	} else {
 		if bNeedXvfb {
@@ -52,16 +54,16 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 			// 	this.startXvfb(m_rmFramework.getRMSiteConfiguration().getXvfbDisplay());
 			// 	m_bXvfbStarted = true;
 			// }
-			if Is32BitOS() {
-				runnerexecpath = GetRSHome() + "/bin/linux32/ImpersonatedProcessRunner_Xvfb.sh"
+			if utils.Is32BitOS() {
+				runnerexecpath = utils.GetRSHome() + "/bin/linux32/ImpersonatedProcessRunner_Xvfb.sh"
 			} else {
-				runnerexecpath = GetRSHome() + "/bin/linux64/ImpersonatedProcessRunner_Xvfb.sh"
+				runnerexecpath = utils.GetRSHome() + "/bin/linux64/ImpersonatedProcessRunner_Xvfb.sh"
 			}
 		} else {
-			if Is32BitOS() {
-				runnerexecpath = GetRSHome() + "/bin/linux32/ImpersonatedProcessRunner.sh"
+			if utils.Is32BitOS() {
+				runnerexecpath = utils.GetRSHome() + "/bin/linux32/ImpersonatedProcessRunner.sh"
 			} else {
-				runnerexecpath = GetRSHome() + "/bin/linux64/ImpersonatedProcessRunner.sh"
+				runnerexecpath = utils.GetRSHome() + "/bin/linux64/ImpersonatedProcessRunner.sh"
 			}
 		}
 	}
@@ -73,7 +75,7 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 	// Does not wait for command to complete before returning
 	if err := cmd.Start(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
-			log.Printf("Exit code is %d\n", exitError.ExitCode())
+			l.Log().Error("Exit code is %d\n", exitError.ExitCode())
 			exitCode = 1
 		}
 	}
@@ -82,14 +84,14 @@ func runCommandWithAIFImpersonation(sArrCmd []string, username string, password 
 	if err := cmd.Wait(); err != nil {
 
 		if exitError, ok := err.(*exec.ExitError); ok {
-			log.Printf("Exit code is %d\n", exitError.ExitCode())
+			l.Log().Info("Exit code is %d\n", exitError.ExitCode())
 			exitCode = 1
 		}
 	}
 
 	dtend := time.Now()
 	diff := dtend.Sub(dtstart)
-	log.Println("Actual Command Execution Time: ", diff)
+	l.Log().Info("Actual Command Execution Time: ", diff)
 
 	return exitCode
 }

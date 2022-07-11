@@ -2,14 +2,16 @@ package graph
 
 import (
 	"altair/rvs/common"
+	"altair/rvs/datamodel"
+	"altair/rvs/utils"
 	"encoding/json"
 )
 
-var Plotinstance *plotinstance
+var Plotinstance *datamodel.Plotinstance
 
 func ViewPLT(sRequestData []byte, pasURL string, sToken string, username string) string {
 
-	var instanceQueryModel InstanceQueryModel
+	var instanceQueryModel datamodel.InstanceQueryModel
 	json.Unmarshal(sRequestData, &instanceQueryModel)
 
 	var cmPLTFileModel = instanceQueryModel.ResultFileInformationModel
@@ -18,13 +20,13 @@ func ViewPLT(sRequestData []byte, pasURL string, sToken string, username string)
 	var sPLTFileContent = common.DownloadFileWLM(pasURL, instanceQueryModel.ResultFileInformationModel.JobState,
 		instanceQueryModel.ResultFileInformationModel.JobId, instanceQueryModel.ResultFileInformationModel.FilePath, sToken)
 
-	Plotinstance = new(plotinstance)
-	var lstPlotModel []plotRequestResponseModel
+	Plotinstance = new(datamodel.Plotinstance)
+	var lstPlotModel []datamodel.PlotRequestResponseModel
 
 	json.Unmarshal([]byte(sPLTFileContent), &Plotinstance)
 
 	for _, pltlst := range Plotinstance.Instances.PLT {
-		var PlotRequestResponseModel plotRequestResponseModel
+		var PlotRequestResponseModel datamodel.PlotRequestResponseModel
 		PlotRequestResponseModel.Queries = pltlst.Queries
 		PlotRequestResponseModel.PlotMetaData = pltlst.PlotMetaData
 		PlotRequestResponseModel.Responses = pltlst.Responses
@@ -33,7 +35,7 @@ func ViewPLT(sRequestData []byte, pasURL string, sToken string, username string)
 	}
 
 	var PlotRequestResModel = CreatePlotResponseModel(cmPLTFileModel, lstPlotModel,
-		getDataDirectoryPath(cmPLTFileModel.ServerName, username), len(lstPlotModel), sToken, "FROM_PLT")
+		utils.GetDataDirectoryPath(cmPLTFileModel.ServerName, username), len(lstPlotModel), sToken, "FROM_PLT")
 
 	PlotRequestResModel.PlotRequestResponseModel.PlotMetaData.UserPreferece = GetUserPlotPreferences()
 
